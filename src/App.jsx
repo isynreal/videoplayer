@@ -11,7 +11,8 @@ import {
 import { 
   Play, Pause, Volume2, Maximize, LogOut, Upload, 
   Search, Plus, X, List, Share2, Film, Lock, Image as ImageIcon,
-  ExternalLink, ChevronRight, Check, Youtube, Trash2, Pencil, Facebook, Video, Filter
+  ExternalLink, ChevronRight, Check, Youtube, Trash2, Pencil, 
+  Facebook, Video, Filter, Instagram, Twitter, AtSign
 } from 'lucide-react';
 
 // --- 設定區域 ---
@@ -63,9 +64,8 @@ const getEmbedInfo = (url) => {
     };
   }
 
-  // 3. Facebook (需為公開影片)
+  // 3. Facebook
   if (url.includes('facebook.com') || url.includes('fb.watch')) {
-    // FB 需要將網址編碼後放入 src
     const encodedUrl = encodeURIComponent(url);
     return {
       type: 'facebook',
@@ -73,19 +73,60 @@ const getEmbedInfo = (url) => {
     };
   }
 
-  // 4. TikTok (需為公開影片)
+  // 4. TikTok (International)
   if (url.includes('tiktok.com')) {
-    // TikTok 嵌入比較複雜，這裡使用影片 ID 嘗試嵌入
     const videoIdMatch = url.match(/video\/(\d+)/);
-    if (videoIdMatch && videoIdMatch[1]) {
-        return {
-            type: 'tiktok',
-            src: `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}?lang=zh-Hant-TW`
-        }
+    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+    return {
+        type: 'tiktok',
+        src: videoId ? `https://www.tiktok.com/embed/v2/${videoId}?lang=zh-Hant-TW` : url,
+        isShortLink: !videoId
     }
   }
 
-  // 5. Default MP4/WebM
+  // 5. Douyin (Chinese TikTok)
+  if (url.includes('douyin.com')) {
+      return { type: 'douyin', src: url }
+  }
+
+  // 6. Instagram (Post/Reel/TV)
+  if (url.includes('instagram.com')) {
+    const match = url.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return {
+        type: 'instagram',
+        src: `https://www.instagram.com/p/${match[1]}/embed/captioned/`
+      };
+    }
+  }
+
+  // 7. Threads (Meta)
+  // 修正：增加對 threads.com 的容錯支援，並優化 Regex 以處理各種參數
+  if (url.includes('threads.net') || url.includes('threads.com')) {
+    // 使用更寬鬆的 Regex：抓取 /post/ 之後直到遇到 / 或 ? 或 & 為止的字串
+    const match = url.match(/\/post\/([^/?&]+)/);
+    if (match && match[1]) {
+      return {
+        type: 'threads',
+        // 雖然 threads 官方有 embed 網址，但常發生 refused to connect，
+        // 故在 PlayerModal 會統一處理為「開啟新視窗」
+        src: url // 直接存原始網址供跳轉
+      };
+    }
+  }
+
+  // 8. Twitter / X
+  if (url.includes('twitter.com') || url.includes('x.com')) {
+    const match = url.match(/\/status\/(\d+)/);
+    if (match && match[1]) {
+      return {
+        type: 'twitter',
+        src: `https://platform.twitter.com/embed/Tweet.html?id=${match[1]}`
+      };
+    }
+  }
+
+  // 9. Default MP4/WebM
   return { type: 'native', src: url };
 };
 
@@ -314,7 +355,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans pb-10">
-      {/* 導覽列 */}
       <nav className="bg-gray-800 border-b border-gray-700 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -404,20 +444,17 @@ export default function App() {
           </div>
         )}
 
-        {/* 播放清單管理介面 */}
         {activeTab === 'playlists' && !isSharedMode && (
           <PlaylistManager 
             videos={videos} 
             playlists={playlists} 
             appId={appId}
-            allTags={allTags} // 傳入標籤供過濾用
+            allTags={allTags}
           />
         )}
 
-        {/* 影片列表 (Home 或 Shared) */}
         {(activeTab === 'home' || activeTab === 'shared') && (
           <>
-            {/* 分享模式下的說明與標題 */}
             {isSharedMode && sharedPlaylistData && (
                 <div className="mb-8 bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
                     <div className="p-6 md:p-8">
@@ -440,7 +477,6 @@ export default function App() {
                 </div>
             )}
 
-            {/* 標籤過濾器 (分享模式隱藏) */}
             {!isSharedMode && allTags.length > 0 && (
               <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
                 <div className="flex gap-2">
@@ -504,7 +540,6 @@ export default function App() {
 
 const VideoCard = ({ video, onClick, isAdmin, onDelete, onEdit }) => {
   const embedInfo = getEmbedInfo(video.url);
-  const isYoutube = embedInfo?.type === 'youtube';
   
   return (
     <div 
@@ -542,12 +577,14 @@ const VideoCard = ({ video, onClick, isAdmin, onDelete, onEdit }) => {
           </div>
         </div>
         
-        {/* 平台標籤 */}
         <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1 shadow-sm backdrop-blur-sm">
              {embedInfo?.type === 'youtube' && <><Youtube className="w-3 h-3 text-red-500" /> YouTube</>}
              {embedInfo?.type === 'facebook' && <><Facebook className="w-3 h-3 text-blue-500" /> Facebook</>}
              {embedInfo?.type === 'vimeo' && <><Video className="w-3 h-3 text-blue-400" /> Vimeo</>}
-             {embedInfo?.type === 'tiktok' && <><span className="font-bold text-pink-500">♪</span> TikTok</>}
+             {(embedInfo?.type === 'tiktok' || embedInfo?.type === 'douyin') && <><span className="font-bold text-pink-500">♪</span> {embedInfo.type === 'douyin' ? 'Douyin' : 'TikTok'}</>}
+             {embedInfo?.type === 'instagram' && <><Instagram className="w-3 h-3 text-pink-500" /> Instagram</>}
+             {embedInfo?.type === 'threads' && <><AtSign className="w-3 h-3 text-white" /> Threads</>}
+             {embedInfo?.type === 'twitter' && <><Twitter className="w-3 h-3 text-blue-400" /> X / Twitter</>}
              {embedInfo?.type === 'native' && <><Film className="w-3 h-3 text-gray-300" /> Video</>}
         </div>
       </div>
@@ -574,6 +611,8 @@ const PlayerModal = ({ video, onClose }) => {
 
   const embedInfo = getEmbedInfo(video.url);
   const isNative = embedInfo?.type === 'native';
+  const isDouyin = embedInfo?.type === 'douyin';
+  const isThreads = embedInfo?.type === 'threads'; // 識別 Threads
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -620,8 +659,29 @@ const PlayerModal = ({ video, onClose }) => {
           </button>
         </div>
 
-        <div className="relative bg-black flex-shrink-0 w-full aspect-video flex items-center justify-center group">
-          {!isNative ? (
+        <div className="relative bg-black flex-shrink-0 w-full aspect-video flex items-center justify-center group overflow-y-auto">
+          {/* Douyin & Threads 特殊介面 - 強制外連播放 */}
+          {(isDouyin || isThreads) && (
+              <div className="text-center p-6">
+                  <div className="mb-4 text-pink-500 font-bold text-2xl">
+                    {isDouyin ? '抖音影片 (Douyin)' : 'Threads 貼文'}
+                  </div>
+                  <p className="text-gray-300 mb-6">
+                    由於此平台 ({isDouyin ? 'Douyin' : 'Threads'}) 的隱私與版權限制，無法直接在外部網站嵌入播放。
+                  </p>
+                  <a 
+                    href={embedInfo.src} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-full flex items-center justify-center gap-2 mx-auto w-fit transition-colors border border-gray-600"
+                  >
+                    <ExternalLink className="w-5 h-5" /> 在新視窗開啟觀看
+                  </a>
+              </div>
+          )}
+
+          {/* 其他 Embed 平台 */}
+          {!isNative && !isDouyin && !isThreads && (
             <iframe
               width="100%"
               height="100%"
@@ -632,7 +692,10 @@ const PlayerModal = ({ video, onClose }) => {
               allowFullScreen
               className="w-full h-full"
             ></iframe>
-          ) : (
+          )}
+
+          {/* 原生 MP4 */}
+          {isNative && (
             <>
               <video
                 ref={videoRef}
@@ -804,7 +867,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit }) => {
                 <input 
                   required
                   type="url" 
-                  placeholder="支援 YT, FB, Vimeo, TikTok"
+                  placeholder="支援 YT, FB, Vimeo, TikTok, IG, Threads, X"
                   value={videoUrl}
                   onChange={e => setVideoUrl(e.target.value)}
                   onBlur={handleUrlBlur}
