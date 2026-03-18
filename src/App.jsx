@@ -14,7 +14,7 @@ import {
   ExternalLink, ChevronRight, Check, Youtube, Trash2, Pencil, 
   Facebook, Video, Filter, Instagram, Twitter, AtSign
 } from 'lucide-react';
-
+const APP_VERSION = "1.0.1"; // 🌟 每次 push 前，請手動修改這個數字！
 // --- 設定區域 ---
 const firebaseConfig = {
   apiKey: "AIzaSyAYhJ0BeSwR0i-x9HHAVXR2p_1dD0l-an4",
@@ -518,7 +518,9 @@ export default function App() {
           </>
         )}
       </main>
-
+      <footer className="py-4 mt-8 text-center text-gray-500 text-sm border-t border-gray-800 w-full shrink-0">
+         內部影音平台 - 版本：{APP_VERSION}
+      </footer>
       {showUploadModal && (
         <UploadModal 
           onClose={() => { setShowUploadModal(false); setVideoToEdit(null); }} 
