@@ -15,7 +15,7 @@ import {
   Facebook, Video, Filter, Instagram, Twitter, AtSign
 } from 'lucide-react';
 
-const APP_VERSION = "1.0.2"; // 🌟 版本號更新
+const APP_VERSION = "1.0.3"; // 🌟 版本號更新 (修復遺失 UI)
 
 // --- 設定區域 ---
 const firebaseConfig = {
@@ -94,7 +94,7 @@ const getYouTubeThumbnail = (id) => `https://img.youtube.com/vi/${id}/hqdefault.
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true); // 新增記住我狀態
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
 
   const handleLogin = (e) => {
@@ -179,7 +179,6 @@ export default function App() {
 
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     
-    // 檢查 localStorage 或 sessionStorage 是否有登入紀錄
     const isLocalAdmin = localStorage.getItem('app_is_admin') === 'true';
     const isSessionAdmin = sessionStorage.getItem('app_is_admin') === 'true';
     if (isLocalAdmin || isSessionAdmin) setIsAdmin(true);
@@ -232,7 +231,6 @@ export default function App() {
     setActiveTab('home');
   };
 
-  // 標籤排序：依照字母/筆畫順序 (localeCompare)
   const allTags = useMemo(() => {
     const tags = new Set();
     videos.forEach(v => v.tags?.forEach(t => tags.add(t)));
@@ -399,7 +397,6 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
     }
   }, [videoToEdit]);
 
-  // 網址變更即時抓取縮圖
   const handleUrlChange = (e) => {
     const newUrl = e.target.value;
     setVideoUrl(newUrl);
@@ -408,7 +405,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
     if (embedInfo?.type === 'youtube') {
       setThumbUrl(getYouTubeThumbnail(embedInfo.id));
     } else if (thumbUrl.includes('img.youtube.com')) {
-      setThumbUrl(''); // 如果原本是 YT 縮圖但網址改了，就自動清空避免圖文不符
+      setThumbUrl('');
     }
   };
 
@@ -435,6 +432,9 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
     } catch (error) { alert("儲存失敗：" + error.message); } 
     finally { setLoading(false); }
   };
+
+  // 🌟 修復：把現有標籤 UI 加回來
+  const availableTags = existingTags.filter(t => !tags.includes(t));
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-0 md:p-4">
@@ -474,9 +474,23 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">標籤 (輸入後按 Enter)</label>
                 <input type="text" value={newTag} onChange={e => setNewTag(e.target.value)} onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); if(newTag && !tags.includes(newTag)) { setTags([...tags, newTag]); setNewTag(''); } } }} className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white mb-2" />
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-2">
                   {tags.map(tag => <span key={tag} className="bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">{tag} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))}><X className="w-3 h-3" /></button></span>)}
                 </div>
+                
+                {/* 🌟 修復：現有標籤點擊加入功能 */}
+                {availableTags.length > 0 && (
+                  <div className="text-xs mt-3 border-t border-gray-700 pt-3">
+                    <p className="text-gray-400 mb-2">現有標籤 (點擊加入)：</p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableTags.map(tag => (
+                        <button key={tag} type="button" onClick={() => setTags([...tags, tag])} className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1.5 rounded-full transition-colors">
+                          + {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -492,18 +506,29 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
 
 const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
   const [showCreate, setShowCreate] = useState(false);
-  const [editingPlaylistId, setEditingPlaylistId] = useState(null); // 紀錄目前編輯的清單 ID
+  const [editingPlaylistId, setEditingPlaylistId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [selectedVideoIds, setSelectedVideoIds] = useState([]);
   const [justCopied, setJustCopied] = useState(null);
   const [filterTag, setFilterTag] = useState(null);
 
+  // 🌟 修復：打開建立新清單視窗的函式，確保狀態清空且不會與 close 衝突
+  const openCreateModal = () => {
+    setEditingPlaylistId(null);
+    setNewTitle('');
+    setNewDesc('');
+    setSelectedVideoIds([]);
+    setFilterTag(null);
+    setShowCreate(true);
+  };
+
   const openEditModal = (pl) => {
     setEditingPlaylistId(pl.id);
     setNewTitle(pl.title);
     setNewDesc(pl.description || '');
     setSelectedVideoIds(pl.videoIds || []);
+    setFilterTag(null);
     setShowCreate(true);
   };
 
@@ -543,7 +568,10 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">我的播放清單</h2>
-        <button onClick={closeEditModal} onClickCapture={() => setShowCreate(true)} className="bg-green-600 px-3 py-2 rounded flex items-center gap-2"><Plus className="w-4 h-4" /> 建立新清單</button>
+        {/* 🌟 修復：綁定正確的 onClick 事件 */}
+        <button onClick={openCreateModal} className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded flex items-center gap-2 transition-colors">
+          <Plus className="w-4 h-4" /> 建立新清單
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -576,6 +604,19 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                 <input type="text" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded px-3 py-2" placeholder="清單說明 (選填)" />
             </div>
 
+            {/* 🌟 修復：把清單裡面的標籤過濾 UI 加回來 */}
+            {allTags.length > 0 && (
+                <div className="mb-4 shrink-0 overflow-x-auto no-scrollbar">
+                    <div className="flex gap-2 items-center">
+                        <span className="text-xs text-gray-400 flex items-center gap-1"><Filter className="w-3 h-3"/> 過濾：</span>
+                        <button onClick={() => setFilterTag(null)} className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${!filterTag ? 'bg-white text-gray-900' : 'bg-gray-700 text-gray-300'}`}>全部</button>
+                        {allTags.map(tag => (
+                            <button key={tag} onClick={() => setFilterTag(tag === filterTag ? null : tag)} className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${tag === filterTag ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>{tag}</button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto mb-4 border border-gray-700 bg-gray-900/50 p-4">
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {displayedVideos.map(v => (
@@ -587,12 +628,13 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                       <div className="truncate text-sm">{v.title}</div>
                     </div>
                   ))}
+                  {displayedVideos.length === 0 && <div className="col-span-full text-center text-gray-500 py-4">沒有符合條件的影片</div>}
                </div>
             </div>
 
             <div className="flex justify-end gap-3 shrink-0">
-              <button onClick={closeEditModal} className="px-4 py-2 text-gray-400">取消</button>
-              <button onClick={handleSavePlaylist} disabled={!newTitle || selectedVideoIds.length === 0} className="bg-blue-600 text-white px-6 py-2 rounded">
+              <button onClick={closeEditModal} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+              <button onClick={handleSavePlaylist} disabled={!newTitle || selectedVideoIds.length === 0} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
                  {editingPlaylistId ? '儲存變更' : '建立並儲存'}
               </button>
             </div>
