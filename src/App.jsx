@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const APP_VERSION = "2.0.0"; // 🌟 大版本更新：iOS 頂級玻璃質感 UI 與物理彈跳特效
+const APP_VERSION = "2.0.1"; // 🌟 更新：修復 Windows 醜陋捲軸，替換為 Mac 級玻璃質感捲軸
 
 // --- 設定區域 ---
 const firebaseConfig = {
@@ -90,7 +90,7 @@ const formatDate = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
-// 🍏 蘋果風：Q彈毛玻璃按鈕 (Squishy Glass Button)
+// 🍏 蘋果風：Q彈毛玻璃按鈕
 const GlassButton = ({ children, onClick, className = "", disabled = false, type = "button" }) => {
   return (
     <motion.button
@@ -113,13 +113,13 @@ const GlassButton = ({ children, onClick, className = "", disabled = false, type
   );
 };
 
-// 🍏 蘋果風：毛玻璃卡片 (用於影片庫或播放清單)
+// 🍏 蘋果風：毛玻璃卡片
 const GlassCard = ({ children, onClick, className = "" }) => {
   return (
     <motion.div
       onClick={onClick}
       whileHover={{ y: -5, scale: 1.01 }}
-      whileTap={{ scale: 0.98 }} // 點擊時微微內縮
+      whileTap={{ scale: 0.98 }}
       className={`
         bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl
         rounded-2xl overflow-hidden cursor-pointer
@@ -254,14 +254,37 @@ export default function App() {
   const isAdmin = !isSharedMode;
 
   return (
-    // 🌟 修改：深色質感背景 + 動態模糊環境光暈
     <div className="min-h-screen bg-[#0f111a] text-gray-100 font-sans pb-10 relative overflow-hidden">
       
-      {/* 🔮 魔法環境光暈 (Ambient Light Orbs) */}
+      {/* 🌟 注入全域 CSS：美化醜陋的 Windows 捲軸 */}
+      <style>{`
+        /* 隱藏預設捲軸，改為蘋果風細緻玻璃捲軸 */
+        .mac-scrollbar::-webkit-scrollbar {
+          height: 6px;
+          width: 6px;
+        }
+        .mac-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 10px;
+        }
+        .mac-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 10px;
+        }
+        .mac-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+        /* 針對 Firefox 的設定 */
+        .mac-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+      `}</style>
+
+      {/* 🔮 魔法環境光暈 */}
       <div className="absolute top-[-10%] left-[0%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[160px] pointer-events-none"></div>
 
-      {/* 🌟 修改：毛玻璃半透明導覽列 */}
       <nav className="bg-black/30 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-30 shadow-2xl relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
@@ -286,7 +309,7 @@ export default function App() {
             )}
 
             {!isSharedMode && (
-              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-2 md:overflow-visible">
+              <div className="flex items-center gap-3 overflow-x-auto mac-scrollbar py-2 md:overflow-visible">
                 <button onClick={() => setActiveTab('home')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'home' ? 'bg-white text-black shadow-lg' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>影片庫</button>
                 <button onClick={() => setActiveTab('playlists')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'playlists' ? 'bg-white text-black shadow-lg' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>播放清單</button>
                 <GlassButton onClick={() => { setVideoToEdit(null); setShowUploadModal(true); }} className="px-5 py-2 rounded-full text-sm flex items-center gap-2 ml-2">
@@ -320,7 +343,8 @@ export default function App() {
 
             {!isSharedMode && (
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 flex-1 w-full">
+                {/* 🌟 修改：替換捲軸樣式為 mac-scrollbar，並增加 pb-3 確保不擁擠 */}
+                <div className="flex gap-2 overflow-x-auto mac-scrollbar pb-3 flex-1 w-full">
                   <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedTag(null)} className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0 ${!selectedTag ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/5 backdrop-blur-md border border-white/10 text-gray-300 hover:bg-white/10'}`}>全部顯示</motion.button>
                   {allTags.map(tag => (
                     <div key={tag} className={`flex items-center pl-4 pr-1 py-1 rounded-full text-sm whitespace-nowrap transition-all border shrink-0 ${tag === selectedTag ? 'bg-blue-500 text-white border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white/5 backdrop-blur-md text-gray-300 border-white/10 hover:bg-white/10'}`}>
@@ -659,7 +683,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
             </div>
 
             {allTags.length > 0 && (
-                <div className="mb-6 shrink-0 overflow-x-auto no-scrollbar bg-white/5 p-4 rounded-2xl border border-white/10 shadow-inner">
+                <div className="mb-6 shrink-0 overflow-x-auto mac-scrollbar bg-white/5 p-4 rounded-2xl border border-white/10 shadow-inner">
                     <div className="flex gap-3 items-center">
                         <span className="text-sm font-bold text-gray-400 flex items-center gap-2 mr-2 uppercase tracking-wider"><Filter className="w-4 h-4"/> 影片過濾</span>
                         <motion.button whileTap={{ scale: 0.9 }} onClick={() => setFilterTag(null)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!filterTag ? 'bg-white text-black shadow-lg' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>全部顯示</motion.button>
