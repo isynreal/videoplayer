@@ -13,7 +13,7 @@ import {
   Facebook, Video, Filter, Instagram, Twitter, AtSign, Calendar
 } from 'lucide-react';
 
-const APP_VERSION = "1.0.4"; // 🌟 移除登入頁、新增日期與 Logo
+const APP_VERSION = "1.0.5"; // 🌟 新增標籤刪除功能、調整分享模式 Logo
 
 // --- 設定區域 ---
 const firebaseConfig = {
@@ -84,7 +84,6 @@ const getEmbedInfo = (url) => {
 
 const getYouTubeThumbnail = (id) => `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 
-// 🌟 新增：日期格式化輔助函式 (YYYY-MM-DD)
 const formatDate = (dateString) => {
   if (!dateString) return '無日期';
   const d = new Date(dateString);
@@ -170,27 +169,46 @@ export default function App() {
     });
   }, [videos, searchQuery, selectedTag, activeTab, sharedPlaylistData]);
   
+  // 🌟 新增：全域刪除標籤功能
+  const handleDeleteGlobalTag = async (tagToDelete) => {
+    if (!confirm(`確定要從系統中徹底刪除「#${tagToDelete}」標籤嗎？\n\n(此動作會將該標籤從所有關聯的影片中移除)`)) return;
+    
+    // 找出所有包含此標籤的影片
+    const videosToUpdate = videos.filter(v => v.tags?.includes(tagToDelete));
+    
+    try {
+      const updatePromises = videosToUpdate.map(v => {
+        const newTags = v.tags.filter(t => t !== tagToDelete);
+        return updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'videos', v.id), { tags: newTags });
+      });
+      await Promise.all(updatePromises);
+      
+      // 如果正在篩選這個標籤，則取消篩選
+      if (selectedTag === tagToDelete) setSelectedTag(null);
+    } catch (error) {
+      alert("刪除標籤失敗：" + error.message);
+    }
+  };
+
   if (!user) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white p-4">正在連線至資料庫...</div>;
 
   const isSharedMode = activeTab === 'shared';
-  const isAdmin = !isSharedMode; // 只要不是分享模式，就自動擁有最高權限
+  const isAdmin = !isSharedMode;
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans pb-10">
       <nav className="bg-gray-800 border-b border-gray-700 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2 cursor-pointer flex-shrink-0 mr-4" onClick={() => {
+            <div className="flex items-center cursor-pointer flex-shrink-0 mr-4" onClick={() => {
                 if (!isSharedMode) { setActiveTab('home'); setSharedPlaylistId(null); setSearchQuery(''); setSelectedTag(null); window.location.hash = ''; }
               }}>
-              {/* 🌟 修改：使用橫式 Logo 取代原本的圖示與文字 */}
-              {isSharedMode ? (
-                  <>
-                     <div className="bg-red-600 p-1.5 rounded-lg"><Film className="w-6 h-6 text-white" /></div>
-                     <span className="font-bold text-lg md:text-xl tracking-tight">{sharedPlaylistData?.title || '播放清單'}</span>
-                  </>
-              ) : (
-                  <img src="/logo.png" alt="iSynReal Logo" className="h-8 md:h-9 object-contain bg-white/90 px-2 py-1 rounded" />
+              {/* 🌟 修改：Logo 統一在所有模式顯示，且加上白色半透明底板以適應黑字 */}
+              <img src="/logo.png" alt="iSynReal Logo" className="h-8 md:h-9 object-contain bg-white/90 px-2 py-1 rounded" />
+              {isSharedMode && (
+                  <span className="font-bold text-lg md:text-xl tracking-tight text-white border-l-2 border-gray-600 pl-3 ml-3">
+                      {sharedPlaylistData?.title || '播放清單'}
+                  </span>
               )}
             </div>
 
@@ -198,7 +216,7 @@ export default function App() {
               <div className="flex-1 max-w-md mx-4 hidden md:block">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-5 w-5 text-gray-400" /></div>
-                  <input type="text" className="block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-full bg-gray-700 text-white focus:outline-none focus:border-red-500 sm:text-sm" placeholder="搜尋影片..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <input type="text" className="block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-full bg-gray-700 text-white focus:outline-none focus:border-blue-500 sm:text-sm" placeholder="搜尋影片..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
               </div>
             )}
@@ -226,7 +244,7 @@ export default function App() {
             {isSharedMode && sharedPlaylistData && (
                 <div className="mb-8 bg-gray-800 rounded-xl border border-gray-700 p-6">
                    <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">{sharedPlaylistData.title}</h1>
-                   <div className="h-1 w-20 bg-red-600 rounded-full mb-4"></div>
+                   <div className="h-1 w-20 bg-blue-500 rounded-full mb-4"></div>
                    <p className="text-gray-300 mb-4">{sharedPlaylistData.description}</p>
                    <div className="flex items-center gap-4 text-sm text-gray-500">
                        <span className="flex items-center gap-1"><List className="w-4 h-4" /> 共 {filteredVideos.length} 部影片</span>
@@ -235,12 +253,18 @@ export default function App() {
                 </div>
             )}
 
+            {/* 🌟 修改：標籤過濾區新增刪除 (X) 按鈕 */}
             {!isSharedMode && allTags.length > 0 && (
               <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedTag(null)} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${!selectedTag ? 'bg-white text-gray-900' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>全部</button>
+                  <button onClick={() => setSelectedTag(null)} className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${!selectedTag ? 'bg-white text-gray-900 shadow' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>全部顯示</button>
                   {allTags.map(tag => (
-                    <button key={tag} onClick={() => setSelectedTag(tag === selectedTag ? null : tag)} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${tag === selectedTag ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>#{tag}</button>
+                    <div key={tag} className={`flex items-center pl-3 pr-1 py-1 rounded-full text-sm whitespace-nowrap transition-colors border ${tag === selectedTag ? 'bg-blue-600 text-white border-blue-500 shadow' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
+                        <span className="cursor-pointer mr-1" onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}>#{tag}</span>
+                        <button onClick={() => handleDeleteGlobalTag(tag)} className="hover:text-red-300 hover:bg-black/20 p-1 rounded-full transition-colors" title="徹底刪除此標籤">
+                            <X className="w-3 h-3" />
+                        </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -272,16 +296,15 @@ const VideoCard = ({ video, onClick, isAdmin, onDelete, onEdit }) => {
       )}
       <div className="relative aspect-video bg-black overflow-hidden border-b border-gray-700">
         <img src={video.thumbUrl || "https://placehold.co/600x400/000000/FFF?text=No+Thumbnail"} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"/>
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><div className="bg-red-600 p-3 rounded-full shadow-lg"><Play className="w-8 h-8 text-white fill-current pl-1" /></div></div>
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><div className="bg-blue-600 p-3 rounded-full shadow-lg"><Play className="w-8 h-8 text-white fill-current pl-1" /></div></div>
       </div>
       <div className="p-4 flex flex-col flex-1">
         <h3 className="text-base font-semibold text-white line-clamp-2 mb-2 group-hover:text-blue-400 transition-colors leading-snug">{video.title}</h3>
-        {/* 🌟 修改：新增建檔日期 */}
         <div className="flex items-center gap-1 text-xs text-gray-500 mb-2 mt-auto">
             <Calendar className="w-3 h-3" /> {formatDate(video.createdAt)}
         </div>
         <div className="flex flex-wrap gap-1">
-          {video.tags?.map(tag => <span key={tag} className="text-xs text-blue-300 bg-blue-900/30 px-1.5 py-0.5 rounded">#{tag}</span>)}
+          {video.tags?.map(tag => <span key={tag} className="text-xs text-blue-300 bg-blue-900/30 px-1.5 py-0.5 rounded border border-blue-800/50">#{tag}</span>)}
         </div>
       </div>
     </div>
@@ -506,7 +529,6 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
             </div>
             <p className="text-gray-400 text-sm mb-4 line-clamp-2 min-h-[2.5rem] leading-relaxed">{pl.description || "無說明內容"}</p>
             
-            {/* 🌟 修改：新增建檔日期 */}
             <div className="flex items-center gap-3 text-xs text-gray-500 mb-5 font-medium">
                 <span className="flex items-center gap-1"><Film className="w-3.5 h-3.5" /> {pl.videoIds?.length || 0} 部影片</span>
                 <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(pl.createdAt)}</span>
