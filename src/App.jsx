@@ -291,7 +291,7 @@ export default function App() {
             <div className="flex items-center cursor-pointer flex-shrink-0 mr-4" onClick={() => {
                 if (!isSharedMode) { setActiveTab('home'); setSharedPlaylistId(null); setSearchQuery(''); setSelectedTag(null); window.location.hash = ''; }
               }}>
-              <img src="/logo.png" alt="iSynReal Logo" className="h-9 md:h-10 object-contain bg-white/95 px-2 py-1.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
+              <img src="/logo.png" alt="iSynReal Logo" className="h-10 md:h-12 object-contain drop-shadow-lg transition-transform hover:scale-105" />
               {isSharedMode && (
                   <span className="font-bold text-lg md:text-xl tracking-tight text-white/90 border-l-2 border-white/20 pl-4 ml-4">
                       {sharedPlaylistData?.title || '播放清單'}
