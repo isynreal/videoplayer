@@ -10,10 +10,11 @@ import {
 import { 
   Play, Pause, Volume2, X, List, Share2, Film, Image as ImageIcon,
   ExternalLink, Check, Youtube, Trash2, Pencil, Search, Plus,
-  Facebook, Video, Filter, Instagram, Twitter, AtSign, Calendar
+  Facebook, Video, Filter, Instagram, Twitter, AtSign, Calendar,
+  ArrowUpDown // 🌟 新增圖示
 } from 'lucide-react';
 
-const APP_VERSION = "1.0.5"; // 🌟 新增標籤刪除功能、調整分享模式 Logo
+const APP_VERSION = "1.0.6"; // 🌟 新增影片與標籤連動排序功能
 
 // --- 設定區域 ---
 const firebaseConfig = {
@@ -102,6 +103,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState(null);
+  const [sortBy, setSortBy] = useState('date_desc'); // 🌟 新增：排序狀態
   
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [videoToEdit, setVideoToEdit] = useState(null);
@@ -132,7 +134,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubVideos = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'videos'), orderBy('createdAt', 'desc')), 
+    const unsubVideos = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'videos')), 
       (snapshot) => setVideos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
     );
     const unsubPlaylists = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'playlists'), orderBy('createdAt', 'desc')), 
@@ -151,39 +153,73 @@ export default function App() {
     }
   }, [sharedPlaylistId, user]);
 
+  // 🌟 修改：標籤動態排序邏輯
   const allTags = useMemo(() => {
-    const tags = new Set();
-    videos.forEach(v => v.tags?.forEach(t => tags.add(t)));
-    return Array.from(tags).sort((a, b) => a.localeCompare(b, 'zh-TW')); 
-  }, [videos]);
+    const tagMap = new Map();
+    
+    // 收集所有標籤的資訊 (最早出現時間、最晚出現時間)
+    videos.forEach(v => {
+      v.tags?.forEach(t => {
+        if (!tagMap.has(t)) {
+          tagMap.set(t, { name: t, latest: v.createdAt || '', oldest: v.createdAt || '' });
+        } else {
+          const data = tagMap.get(t);
+          if ((v.createdAt || '') > data.latest) data.latest = v.createdAt;
+          if ((v.createdAt || '') < data.oldest) data.oldest = v.createdAt;
+        }
+      });
+    });
 
+    const tagArray = Array.from(tagMap.values());
+    
+    // 根據目前的排序條件套用到標籤
+    tagArray.sort((a, b) => {
+      if (sortBy === 'date_desc') return b.latest.localeCompare(a.latest);
+      if (sortBy === 'date_asc') return a.oldest.localeCompare(b.oldest);
+      if (sortBy === 'title_asc') return a.name.localeCompare(b.name, 'zh-TW');
+      if (sortBy === 'title_desc') return b.name.localeCompare(a.name, 'zh-TW');
+      return 0;
+    });
+    
+    return tagArray.map(t => t.name);
+  }, [videos, sortBy]);
+
+  // 🌟 修改：影片動態排序邏輯
   const filteredVideos = useMemo(() => {
-    let source = videos;
-    if (activeTab === 'shared' && sharedPlaylistData) source = videos.filter(v => sharedPlaylistData.videoIds.includes(v.id));
+    let source = [...videos]; // 複製一份陣列來排序
+    
+    if (activeTab === 'shared' && sharedPlaylistData) source = source.filter(v => sharedPlaylistData.videoIds.includes(v.id));
     else if (activeTab === 'shared' && !sharedPlaylistData) return [];
     
-    return source.filter(v => {
+    // 1. 先過濾
+    let result = source.filter(v => {
       const matchesSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesTag = selectedTag ? v.tags?.includes(selectedTag) : true;
       return matchesSearch && matchesTag;
     });
-  }, [videos, searchQuery, selectedTag, activeTab, sharedPlaylistData]);
+
+    // 2. 再排序
+    result.sort((a, b) => {
+      if (sortBy === 'date_desc') return (b.createdAt || '').localeCompare(a.createdAt || '');
+      if (sortBy === 'date_asc') return (a.createdAt || '').localeCompare(b.createdAt || '');
+      if (sortBy === 'title_asc') return (a.title || '').localeCompare(b.title || '', 'zh-TW');
+      if (sortBy === 'title_desc') return (b.title || '').localeCompare(a.title || '', 'zh-TW');
+      return 0;
+    });
+
+    return result;
+  }, [videos, searchQuery, selectedTag, activeTab, sharedPlaylistData, sortBy]);
   
-  // 🌟 新增：全域刪除標籤功能
   const handleDeleteGlobalTag = async (tagToDelete) => {
     if (!confirm(`確定要從系統中徹底刪除「#${tagToDelete}」標籤嗎？\n\n(此動作會將該標籤從所有關聯的影片中移除)`)) return;
     
-    // 找出所有包含此標籤的影片
     const videosToUpdate = videos.filter(v => v.tags?.includes(tagToDelete));
-    
     try {
       const updatePromises = videosToUpdate.map(v => {
         const newTags = v.tags.filter(t => t !== tagToDelete);
         return updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'videos', v.id), { tags: newTags });
       });
       await Promise.all(updatePromises);
-      
-      // 如果正在篩選這個標籤，則取消篩選
       if (selectedTag === tagToDelete) setSelectedTag(null);
     } catch (error) {
       alert("刪除標籤失敗：" + error.message);
@@ -203,7 +239,6 @@ export default function App() {
             <div className="flex items-center cursor-pointer flex-shrink-0 mr-4" onClick={() => {
                 if (!isSharedMode) { setActiveTab('home'); setSharedPlaylistId(null); setSearchQuery(''); setSelectedTag(null); window.location.hash = ''; }
               }}>
-              {/* 🌟 修改：Logo 統一在所有模式顯示，且加上白色半透明底板以適應黑字 */}
               <img src="/logo.png" alt="iSynReal Logo" className="h-8 md:h-9 object-contain bg-white/90 px-2 py-1 rounded" />
               {isSharedMode && (
                   <span className="font-bold text-lg md:text-xl tracking-tight text-white border-l-2 border-gray-600 pl-3 ml-3">
@@ -253,19 +288,34 @@ export default function App() {
                 </div>
             )}
 
-            {/* 🌟 修改：標籤過濾區新增刪除 (X) 按鈕 */}
-            {!isSharedMode && allTags.length > 0 && (
-              <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
-                <div className="flex gap-2">
-                  <button onClick={() => setSelectedTag(null)} className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${!selectedTag ? 'bg-white text-gray-900 shadow' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>全部顯示</button>
+            {!isSharedMode && (
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                {/* 標籤列 */}
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 flex-1 w-full">
+                  <button onClick={() => setSelectedTag(null)} className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${!selectedTag ? 'bg-white text-gray-900 shadow' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>全部顯示</button>
                   {allTags.map(tag => (
-                    <div key={tag} className={`flex items-center pl-3 pr-1 py-1 rounded-full text-sm whitespace-nowrap transition-colors border ${tag === selectedTag ? 'bg-blue-600 text-white border-blue-500 shadow' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
+                    <div key={tag} className={`flex items-center pl-3 pr-1 py-1 rounded-full text-sm whitespace-nowrap transition-colors border shrink-0 ${tag === selectedTag ? 'bg-blue-600 text-white border-blue-500 shadow' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
                         <span className="cursor-pointer mr-1" onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}>#{tag}</span>
                         <button onClick={() => handleDeleteGlobalTag(tag)} className="hover:text-red-300 hover:bg-black/20 p-1 rounded-full transition-colors" title="徹底刪除此標籤">
                             <X className="w-3 h-3" />
                         </button>
                     </div>
                   ))}
+                </div>
+
+                {/* 🌟 新增：排序下拉選單 */}
+                <div className="flex items-center gap-2 shrink-0 bg-gray-800 p-1.5 rounded-lg border border-gray-700">
+                  <ArrowUpDown className="w-4 h-4 text-gray-400 ml-1" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-transparent text-sm text-gray-200 cursor-pointer focus:outline-none pr-2 py-0.5"
+                  >
+                    <option value="date_desc" className="bg-gray-800">最新上傳</option>
+                    <option value="date_asc" className="bg-gray-800">最舊上傳</option>
+                    <option value="title_asc" className="bg-gray-800">筆畫/字母 (由少到多)</option>
+                    <option value="title_desc" className="bg-gray-800">筆畫/字母 (由多到少)</option>
+                  </select>
                 </div>
               </div>
             )}
@@ -275,6 +325,13 @@ export default function App() {
                 <VideoCard key={video.id} video={video} onClick={() => setCurrentVideo(video)} isAdmin={isAdmin} onDelete={(e) => { e.stopPropagation(); deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'videos', video.id)); }} onEdit={(e, v) => { e.stopPropagation(); setVideoToEdit(v); setShowUploadModal(true); }} />
               ))}
             </div>
+            
+            {!isSharedMode && filteredVideos.length === 0 && (
+                <div className="text-center py-20 text-gray-500">
+                    <Film className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p>找不到符合條件的影片</p>
+                </div>
+            )}
           </>
         )}
       </main>
