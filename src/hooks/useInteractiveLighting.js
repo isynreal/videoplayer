@@ -8,6 +8,21 @@ const INTERACTIVE_SELECTOR = [
   '[data-interactive]:not([data-interactive="off"])',
 ].join(',');
 
+const GLOW_COLORS = {
+  primary: '96, 165, 250',
+  purple: '192, 132, 252',
+  success: '74, 222, 128',
+  danger: '248, 113, 113',
+  neutral: '125, 211, 252',
+  subtle: '255, 255, 255',
+};
+
+const GLOW_SIZES = {
+  control: { radius: 150, centerAlpha: 0.7, middleAlpha: 0.24 },
+  card: { radius: 300, centerAlpha: 0.44, middleAlpha: 0.14 },
+  panel: { radius: 380, centerAlpha: 0.28, middleAlpha: 0.08 },
+};
+
 const getInteractiveTarget = (target) => {
   if (!(target instanceof Element)) return null;
   const interactiveElement = target.closest(INTERACTIVE_SELECTOR);
@@ -25,8 +40,17 @@ export const useInteractiveLighting = () => {
       const rect = element.getBoundingClientRect();
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
+      const glowColor = GLOW_COLORS[element.dataset.glow] || GLOW_COLORS.primary;
+      const glowSize = GLOW_SIZES[element.dataset.interactiveSize] || GLOW_SIZES.control;
+      const gradient = [
+        `radial-gradient(circle ${glowSize.radius}px at ${x}px ${y}px`,
+        `rgba(${glowColor}, ${glowSize.centerAlpha}) 0%`,
+        `rgba(${glowColor}, ${glowSize.middleAlpha}) 38%`,
+        'rgba(255, 255, 255, 0.04) 58%',
+        'transparent 76%)',
+      ].join(', ');
 
-      element.style.setProperty('--pointer-position', `${x}px ${y}px`);
+      element.style.setProperty('--interactive-light-gradient', gradient);
     };
 
     const flushPosition = () => {
@@ -52,7 +76,7 @@ export const useInteractiveLighting = () => {
 
     const centerKeyboardLight = (element) => {
       const rect = element.getBoundingClientRect();
-      element.style.setProperty('--pointer-position', `${rect.width / 2}px ${rect.height / 2}px`);
+      setPosition(element, rect.left + rect.width / 2, rect.top + rect.height / 2);
       element.classList.add('is-keyboard-focus');
     };
 
