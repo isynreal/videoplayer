@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, addDoc, onSnapshot, 
   query, orderBy, deleteDoc, doc, getDoc, updateDoc 
 } from 'firebase/firestore';
 import { 
-  getAuth, signInAnonymously, onAuthStateChanged 
+  getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from 'firebase/auth';
 import { 
-  Play, Pause, Volume2, X, List, Share2, Film, Image as ImageIcon,
-  ExternalLink, Check, Youtube, Trash2, Pencil, Search, Plus,
-  Facebook, Video, Filter, Instagram, Twitter, AtSign, Calendar,
-  ArrowUpDown
+  Play, X, List, Share2, Film, Image as ImageIcon,
+  Check, Trash2, Pencil, Search, Plus, Filter, Calendar,
+  ArrowUpDown, LockKeyhole, UserRound, LogOut
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 const APP_VERSION = "2.0.1"; // 🌟 更新：修復 Windows 醜陋捲軸，替換為 Mac 級玻璃質感捲軸
 
@@ -28,14 +27,18 @@ const firebaseConfig = {
   measurementId: "G-LTCZEXHP3B"
 };
 
-const configToUse = (typeof __firebase_config !== 'undefined') 
-  ? JSON.parse(__firebase_config) 
+const configToUse = (typeof globalThis.__firebase_config === 'string')
+  ? JSON.parse(globalThis.__firebase_config)
   : firebaseConfig;
 
 const app = initializeApp(configToUse);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'video-app';
+const appId = globalThis.__app_id || 'video-app';
+
+const ADMIN_USERNAME = 'iSynReal';
+// Firebase Authentication 需要 email/password；介面仍讓管理員使用 iSynReal 登入。
+const ADMIN_AUTH_EMAIL = 'isynreal@video-platform.app';
 
 // --- Helper Functions ---
 const getEmbedInfo = (url) => {
@@ -44,7 +47,7 @@ const getEmbedInfo = (url) => {
   const ytMatch = url.match(ytRegExp);
   if (ytMatch && ytMatch[2].length === 11) return { type: 'youtube', src: `https://www.youtube.com/embed/${ytMatch[2]}?autoplay=1`, id: ytMatch[2] };
 
-  const vimeoRegExp = /(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)(?:[a-zA-Z0-9_\-]+)?/i;
+  const vimeoRegExp = /(?:www\.|player\.)?vimeo.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)(?:[a-zA-Z0-9_-]+)?/i;
   const vimeoMatch = url.match(vimeoRegExp);
   if (vimeoMatch && vimeoMatch[1]) return { type: 'vimeo', src: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1` };
 
@@ -91,12 +94,13 @@ const formatDate = (dateString) => {
 };
 
 // 🍏 蘋果風：Q彈毛玻璃按鈕
-const GlassButton = ({ children, onClick, className = "", disabled = false, type = "button" }) => {
+const GlassButton = ({ children, onClick, className = "", disabled = false, type = "button", ...buttonProps }) => {
   return (
-    <motion.button
+    <Motion.button
       type={type}
       disabled={disabled}
       onClick={onClick}
+      {...buttonProps}
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.92, transition: { type: "spring", stiffness: 400, damping: 10 } }}
       className={`
@@ -109,14 +113,14 @@ const GlassButton = ({ children, onClick, className = "", disabled = false, type
       `}
     >
       {children}
-    </motion.button>
+    </Motion.button>
   );
 };
 
 // 🍏 蘋果風：毛玻璃卡片
 const GlassCard = ({ children, onClick, className = "" }) => {
   return (
-    <motion.div
+    <Motion.div
       onClick={onClick}
       whileHover={{ y: -5, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
@@ -129,7 +133,115 @@ const GlassCard = ({ children, onClick, className = "" }) => {
       `}
     >
       {children}
-    </motion.div>
+    </Motion.div>
+  );
+};
+
+const AdminLogin = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    try {
+      await onLogin(username, password);
+    } catch (error) {
+      if (error.code === 'auth/too-many-requests') {
+        setErrorMessage('嘗試次數過多，請稍後再試。');
+      } else if (error.code === 'auth/network-request-failed') {
+        setErrorMessage('目前無法連線，請檢查網路後重試。');
+      } else {
+        setErrorMessage('帳號或密碼不正確。');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-[#0f111a] text-gray-100 relative overflow-hidden flex items-center justify-center px-4 py-10">
+      <div className="absolute top-[-20%] left-[-10%] w-[520px] h-[520px] bg-blue-600/30 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-[-25%] right-[-10%] w-[560px] h-[560px] bg-purple-600/20 rounded-full blur-[160px] pointer-events-none" />
+
+      <Motion.section
+        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+        className="relative z-10 w-full max-w-md bg-[#151822]/85 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.45)] p-7 sm:p-9"
+        aria-labelledby="admin-login-title"
+      >
+        <div className="flex justify-center mb-8">
+          <img src="/logo.png" alt="iSynReal" className="h-14 w-auto object-contain drop-shadow-lg" />
+        </div>
+
+        <div className="text-center mb-8">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-400/20 flex items-center justify-center">
+            <LockKeyhole className="w-6 h-6 text-blue-400" />
+          </div>
+          <h1 id="admin-login-title" className="text-2xl font-extrabold text-white mb-2">管理後台登入</h1>
+          <p className="text-sm text-gray-400">請先驗證管理員身分，再進入影片編輯頁面。</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label htmlFor="admin-username" className="block text-sm font-bold text-gray-300 mb-2">帳號</label>
+            <div className="relative">
+              <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                id="admin-username"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                autoFocus
+                required
+                placeholder="請輸入管理員帳號"
+                className="w-full bg-black/30 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-blue-500/70 focus:bg-white/5 focus:shadow-[0_0_20px_rgba(59,130,246,0.16)] transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="admin-password" className="block text-sm font-bold text-gray-300 mb-2">密碼</label>
+            <div className="relative">
+              <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                id="admin-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+                placeholder="請輸入密碼"
+                className="w-full bg-black/30 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-blue-500/70 focus:bg-white/5 focus:shadow-[0_0_20px_rgba(59,130,246,0.16)] transition-all"
+              />
+            </div>
+          </div>
+
+          {errorMessage && (
+            <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              {errorMessage}
+            </p>
+          )}
+
+          <GlassButton
+            type="submit"
+            disabled={isSubmitting || !username || !password}
+            className="w-full !bg-blue-600 !border-blue-400 hover:!bg-blue-500 rounded-xl py-3.5 flex items-center justify-center gap-2 font-bold shadow-[0_0_24px_rgba(37,99,235,0.3)]"
+          >
+            <LockKeyhole className="w-4 h-4" />
+            {isSubmitting ? '驗證中...' : '登入管理後台'}
+          </GlassButton>
+        </form>
+
+        <p className="mt-6 text-center text-xs text-gray-500">此頁面僅供授權管理員使用</p>
+      </Motion.section>
+    </main>
   );
 };
 
@@ -137,6 +249,7 @@ const GlassCard = ({ children, onClick, className = "" }) => {
 // --- Main App Component ---
 export default function App() {
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [videos, setVideos] = useState([]);
   const [playlists, setPlaylists] = useState([]);
   const [activeTab, setActiveTab] = useState('home');
@@ -151,21 +264,33 @@ export default function App() {
   const [sharedPlaylistData, setSharedPlaylistData] = useState(null);
 
   useEffect(() => {
-    const initAuth = async () => { try { await signInAnonymously(auth); } catch (e) { console.error("登入失敗:", e); } };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthReady(true);
+    });
     
     const checkHash = () => {
       const hash = window.location.hash;
       if (hash.startsWith('#playlist/')) {
         setSharedPlaylistId(hash.split('/')[1]);
         setActiveTab('shared');
+      } else {
+        setSharedPlaylistId(null);
+        setSharedPlaylistData(null);
+        setActiveTab('home');
       }
     };
     checkHash();
     window.addEventListener('hashchange', checkHash);
     return () => { unsubscribe(); window.removeEventListener('hashchange', checkHash); };
   }, []);
+
+  useEffect(() => {
+    if (!authReady || user || !sharedPlaylistId) return;
+    signInAnonymously(auth).catch((error) => {
+      console.error("分享頁面匿名登入失敗:", error);
+    });
+  }, [authReady, user, sharedPlaylistId]);
 
   useEffect(() => {
     if (!user) return;
@@ -248,10 +373,23 @@ export default function App() {
     }
   };
 
-  if (!user) return <div className="min-h-screen bg-[#0f111a] flex items-center justify-center text-white p-4">正在連線至資料庫...</div>;
+  const handleAdminLogin = async (username, password) => {
+    if (username.trim().toLowerCase() !== ADMIN_USERNAME.toLowerCase()) {
+      throw new Error('帳號或密碼不正確');
+    }
+    await signInWithEmailAndPassword(auth, ADMIN_AUTH_EMAIL, password);
+  };
 
   const isSharedMode = activeTab === 'shared';
   const isAdmin = !isSharedMode;
+
+  if (!authReady || (isSharedMode && !user)) {
+    return <div className="min-h-screen bg-[#0f111a] flex items-center justify-center text-white p-4">正在連線至資料庫...</div>;
+  }
+
+  if (!isSharedMode && (!user || user.isAnonymous)) {
+    return <AdminLogin onLogin={handleAdminLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#0f111a] text-gray-100 font-sans pb-10 relative overflow-hidden">
@@ -315,6 +453,9 @@ export default function App() {
                 <GlassButton onClick={() => { setVideoToEdit(null); setShowUploadModal(true); }} className="px-5 py-2 rounded-full text-sm flex items-center gap-2 ml-2">
                   <Plus className="w-4 h-4" /><span className="hidden sm:inline">新增影片</span>
                 </GlassButton>
+                <GlassButton onClick={() => signOut(auth)} className="p-2.5 rounded-full" aria-label="登出管理後台">
+                  <LogOut className="w-4 h-4" />
+                </GlassButton>
               </div>
             )}
           </div>
@@ -345,13 +486,13 @@ export default function App() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 {/* 🌟 修改：替換捲軸樣式為 mac-scrollbar，並增加 pb-3 確保不擁擠 */}
                 <div className="flex gap-2 overflow-x-auto mac-scrollbar pb-3 flex-1 w-full">
-                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedTag(null)} className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0 ${!selectedTag ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/5 backdrop-blur-md border border-white/10 text-gray-300 hover:bg-white/10'}`}>全部顯示</motion.button>
+                  <Motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedTag(null)} className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0 ${!selectedTag ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/5 backdrop-blur-md border border-white/10 text-gray-300 hover:bg-white/10'}`}>全部顯示</Motion.button>
                   {allTags.map(tag => (
                     <div key={tag} className={`flex items-center pl-4 pr-1 py-1 rounded-full text-sm whitespace-nowrap transition-all border shrink-0 ${tag === selectedTag ? 'bg-blue-500 text-white border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white/5 backdrop-blur-md text-gray-300 border-white/10 hover:bg-white/10'}`}>
                         <span className="cursor-pointer mr-2 font-medium py-1" onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}>#{tag}</span>
-                        <motion.button whileHover={{ scale: 1.2, backgroundColor: "rgba(239, 68, 68, 0.2)" }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteGlobalTag(tag)} className="text-gray-400 hover:text-red-400 p-1.5 rounded-full transition-colors" title="徹底刪除此標籤">
+                        <Motion.button whileHover={{ scale: 1.2, backgroundColor: "rgba(239, 68, 68, 0.2)" }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteGlobalTag(tag)} className="text-gray-400 hover:text-red-400 p-1.5 rounded-full transition-colors" title="徹底刪除此標籤">
                             <X className="w-3.5 h-3.5" />
-                        </motion.button>
+                        </Motion.button>
                     </div>
                   ))}
                 </div>
@@ -400,8 +541,8 @@ const VideoCard = ({ video, onClick, isAdmin, onDelete, onEdit }) => {
     <GlassCard onClick={onClick} className="flex flex-col h-full relative group">
       {isAdmin && (
         <div className="absolute top-3 left-3 z-20 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300">
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => onEdit(e, video)} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-blue-500 text-white p-2.5 rounded-full shadow-lg"><Pencil className="w-4 h-4" /></motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { if(confirm('確定刪除這部影片？')) onDelete(e, video.id); }} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-red-500 text-white p-2.5 rounded-full shadow-lg"><Trash2 className="w-4 h-4" /></motion.button>
+          <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => onEdit(e, video)} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-blue-500 text-white p-2.5 rounded-full shadow-lg"><Pencil className="w-4 h-4" /></Motion.button>
+          <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { if(confirm('確定刪除這部影片？')) onDelete(e, video.id); }} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-red-500 text-white p-2.5 rounded-full shadow-lg"><Trash2 className="w-4 h-4" /></Motion.button>
         </div>
       )}
       <div className="relative aspect-video bg-black/50 overflow-hidden border-b border-white/10">
@@ -430,7 +571,7 @@ const PlayerModal = ({ video, onClose }) => {
   const embedInfo = getEmbedInfo(video.url);
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-0 md:p-6">
-      <motion.div 
+      <Motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
@@ -439,7 +580,7 @@ const PlayerModal = ({ video, onClose }) => {
       >
         <div className="flex justify-between items-center p-4 md:p-5 border-b border-white/10 shrink-0 bg-white/5">
           <h2 className="text-lg font-bold text-white truncate pr-4">{video.title}</h2>
-          <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/10 p-2 rounded-full border border-white/10"><X className="w-5 h-5" /></motion.button>
+          <Motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/10 p-2 rounded-full border border-white/10"><X className="w-5 h-5" /></Motion.button>
         </div>
         <div className="relative bg-black w-full aspect-video flex items-center justify-center shadow-inner">
           {embedInfo?.type === 'native' ? (
@@ -452,7 +593,7 @@ const PlayerModal = ({ video, onClose }) => {
             <h4 className="text-sm font-bold text-white/70 mb-3 flex items-center gap-2 uppercase tracking-wider"><List className="w-4 h-4"/> 影片說明</h4>
             <p className="text-base text-gray-300 whitespace-pre-wrap leading-relaxed">{video.description || "尚無描述內容"}</p>
         </div>
-      </motion.div>
+      </Motion.div>
     </div>
   );
 };
@@ -511,7 +652,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-0 md:p-6">
-      <motion.div 
+      <Motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
         className="bg-[#151822]/90 backdrop-blur-3xl md:rounded-3xl w-full h-full md:h-auto md:max-w-4xl p-6 md:p-10 border border-white/10 overflow-y-auto shadow-[0_0_50px_rgba(0,0,0,0.5)]"
       >
@@ -520,7 +661,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
             {videoToEdit ? <div className="bg-blue-500/20 p-2 rounded-xl"><Pencil className="w-6 h-6 text-blue-400" /></div> : <div className="bg-green-500/20 p-2 rounded-xl"><Plus className="w-6 h-6 text-green-400" /></div>} 
             {videoToEdit ? '編輯影片內容' : '新增影片至資料庫'}
           </h2>
-          <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/5 border border-white/10 rounded-full p-2"><X className="w-6 h-6" /></motion.button>
+          <Motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/5 border border-white/10 rounded-full p-2"><X className="w-6 h-6" /></Motion.button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -561,9 +702,9 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
                 
                 <div className="flex flex-wrap gap-2 mb-4 min-h-[40px] bg-black/20 p-3 rounded-xl border border-white/5">
                   {tags.map(tag => (
-                      <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} key={tag} className="bg-blue-600 border border-blue-400 text-white text-sm font-medium px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+                      <Motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} key={tag} className="bg-blue-600 border border-blue-400 text-white text-sm font-medium px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
                           #{tag} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-300 bg-black/20 rounded-full p-0.5"><X className="w-3.5 h-3.5" /></button>
-                      </motion.span>
+                      </Motion.span>
                   ))}
                   {tags.length === 0 && <span className="text-gray-500 text-sm flex items-center">尚未加入任何標籤</span>}
                 </div>
@@ -573,9 +714,9 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
                     <p className="text-gray-400 text-xs font-bold mb-3 uppercase tracking-wider">點擊快速加入現有標籤</p>
                     <div className="flex flex-wrap gap-2">
                       {availableTags.map(tag => (
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} key={tag} type="button" onClick={() => setTags([...tags, tag])} className="bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-full text-sm font-medium transition-colors">
+                        <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} key={tag} type="button" onClick={() => setTags([...tags, tag])} className="bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-full text-sm font-medium transition-colors">
                           + {tag}
-                        </motion.button>
+                        </Motion.button>
                       ))}
                     </div>
                   </div>
@@ -590,7 +731,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
             </GlassButton>
           </div>
         </form>
-      </motion.div>
+      </Motion.div>
     </div>
   );
 };
@@ -615,7 +756,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
       if (editingPlaylistId) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'playlists', editingPlaylistId), { title: newTitle, description: newDesc, videoIds: selectedVideoIds, updatedAt: new Date().toISOString() });
       else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'playlists'), { title: newTitle, description: newDesc, videoIds: selectedVideoIds, createdAt: new Date().toISOString() });
       closeEditModal();
-    } catch (e) { alert('儲存失敗'); }
+    } catch { alert('儲存失敗'); }
   };
 
   const copyLink = (id) => {
@@ -641,8 +782,8 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-bold truncate pr-2 text-white/90 group-hover:text-white transition-colors">{pl.title}</h3>
               <div className="flex gap-2 shrink-0 bg-black/40 backdrop-blur-md rounded-xl p-1.5 border border-white/5">
-                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(pl)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { if(confirm('確定刪除這個清單嗎？')) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'playlists', pl.id)); }} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></motion.button>
+                 <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(pl)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></Motion.button>
+                 <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { if(confirm('確定刪除這個清單嗎？')) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'playlists', pl.id)); }} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></Motion.button>
               </div>
             </div>
             <p className="text-gray-400 text-sm mb-6 line-clamp-2 min-h-[2.5rem] leading-relaxed">{pl.description || "無說明內容"}</p>
@@ -665,7 +806,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-0 md:p-6">
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#151822]/90 backdrop-blur-3xl md:rounded-3xl w-full max-w-5xl p-6 md:p-10 border border-white/10 max-h-[95vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+          <Motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#151822]/90 backdrop-blur-3xl md:rounded-3xl w-full max-w-5xl p-6 md:p-10 border border-white/10 max-h-[95vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
             <h2 className="text-2xl font-extrabold mb-8 shrink-0 flex items-center gap-3 text-white border-b border-white/10 pb-5">
                 <div className="bg-purple-500/20 p-2 rounded-xl"><List className="w-6 h-6 text-purple-400" /></div> 
                 {editingPlaylistId ? '編輯播放清單' : '建立分享清單'}
@@ -686,9 +827,9 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                 <div className="mb-6 shrink-0 overflow-x-auto mac-scrollbar bg-white/5 p-4 rounded-2xl border border-white/10 shadow-inner">
                     <div className="flex gap-3 items-center">
                         <span className="text-sm font-bold text-gray-400 flex items-center gap-2 mr-2 uppercase tracking-wider"><Filter className="w-4 h-4"/> 影片過濾</span>
-                        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setFilterTag(null)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!filterTag ? 'bg-white text-black shadow-lg' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>全部顯示</motion.button>
+                        <Motion.button whileTap={{ scale: 0.9 }} onClick={() => setFilterTag(null)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!filterTag ? 'bg-white text-black shadow-lg' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>全部顯示</Motion.button>
                         {allTags.map(tag => (
-                            <motion.button whileTap={{ scale: 0.9 }} key={tag} onClick={() => setFilterTag(tag === filterTag ? null : tag)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${tag === filterTag ? 'bg-purple-600 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-black/30 text-gray-300 border-white/5 hover:bg-white/10'}`}>#{tag}</motion.button>
+                            <Motion.button whileTap={{ scale: 0.9 }} key={tag} onClick={() => setFilterTag(tag === filterTag ? null : tag)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${tag === filterTag ? 'bg-purple-600 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>#{tag}</Motion.button>
                         ))}
                     </div>
                 </div>
@@ -701,7 +842,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                </h3>
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {displayedVideos.map(v => (
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
+                    <Motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
                       className={`cursor-pointer p-4 rounded-2xl border flex items-center gap-4 transition-all ${selectedVideoIds.includes(v.id) ? 'border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 hover:border-white/20 bg-white/5'}`}>
                       <div className={`w-6 h-6 rounded-md border flex-shrink-0 flex items-center justify-center transition-all ${selectedVideoIds.includes(v.id) ? 'bg-purple-500 border-purple-400 shadow-lg' : 'border-gray-500 bg-black/50'}`}>
                         {selectedVideoIds.includes(v.id) && <Check className="w-4 h-4 text-white" />}
@@ -710,7 +851,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                           <div className={`text-sm font-bold truncate mb-1 ${selectedVideoIds.includes(v.id) ? 'text-white' : 'text-gray-300'}`}>{v.title}</div>
                           <div className="text-xs text-gray-500 truncate">{v.tags?.join(', ') || '無標籤'}</div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   ))}
                   {displayedVideos.length === 0 && <div className="col-span-full text-center text-gray-500 py-12 bg-white/5 rounded-2xl border border-dashed border-white/10">沒有符合標籤條件的影片</div>}
                </div>
@@ -722,7 +863,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                  {editingPlaylistId ? '儲存變更' : '建立並儲存'}
               </GlassButton>
             </div>
-          </motion.div>
+          </Motion.div>
         </div>
       )}
     </div>
