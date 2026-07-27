@@ -5,6 +5,9 @@ const INTERACTIVE_SELECTOR = [
   'input:not([type="file"]):not([type="hidden"]):not([data-interactive="off"])',
   'textarea:not([data-interactive="off"])',
   'select:not([data-interactive="off"])',
+  'a[href]:not([data-interactive="off"])',
+  '[role="button"]:not([data-interactive="off"])',
+  '.cursor-pointer:not([data-interactive="off"])',
   '[data-interactive]:not([data-interactive="off"])',
 ].join(',');
 
@@ -18,21 +21,29 @@ const GLOW_COLORS = {
 };
 
 const GLOW_SIZES = {
-  control: { radius: 150, centerAlpha: 0.7, middleAlpha: 0.24 },
-  card: { radius: 300, centerAlpha: 0.44, middleAlpha: 0.14 },
-  panel: { radius: 380, centerAlpha: 0.28, middleAlpha: 0.08 },
+  control: { radius: 140, centerAlpha: 0.34, middleAlpha: 0.1 },
+  card: { radius: 290, centerAlpha: 0.2, middleAlpha: 0.055 },
+  panel: { radius: 370, centerAlpha: 0.12, middleAlpha: 0.035 },
 };
 
 const getInteractiveTarget = (target) => {
   if (!(target instanceof Element)) return null;
   const interactiveElement = target.closest(INTERACTIVE_SELECTOR);
   if (!interactiveElement || interactiveElement.matches(':disabled, [aria-disabled="true"]')) return null;
+  if (
+    !interactiveElement.hasAttribute('data-interactive')
+    && !interactiveElement.matches('button, input, textarea, select')
+  ) {
+    interactiveElement.dataset.interactive = 'runtime';
+  }
   return interactiveElement;
 };
 
 export const useInteractiveLighting = () => {
   useEffect(() => {
     let activeElement = null;
+    let keyboardFocusElement = null;
+    let keyboardNavigation = false;
     let animationFrame = null;
     let pendingPosition = null;
 
@@ -41,12 +52,13 @@ export const useInteractiveLighting = () => {
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
       const glowColor = GLOW_COLORS[element.dataset.glow] || GLOW_COLORS.primary;
-      const glowSize = GLOW_SIZES[element.dataset.interactiveSize] || GLOW_SIZES.control;
+      const inferredSize = rect.width >= 180 && rect.height >= 90 ? 'card' : 'control';
+      const glowSize = GLOW_SIZES[element.dataset.interactiveSize || inferredSize] || GLOW_SIZES.control;
       const gradient = [
         `radial-gradient(circle ${glowSize.radius}px at ${x}px ${y}px`,
         `rgba(${glowColor}, ${glowSize.centerAlpha}) 0%`,
         `rgba(${glowColor}, ${glowSize.middleAlpha}) 38%`,
-        'rgba(255, 255, 255, 0.04) 58%',
+        'rgba(255, 255, 255, 0.015) 58%',
         'transparent 76%)',
       ].join(', ');
 
@@ -60,7 +72,15 @@ export const useInteractiveLighting = () => {
     };
 
     const activate = (element, clientX, clientY) => {
-      if (!element) return;
+      if (!element) {
+        if (activeElement) {
+          activeElement.classList.remove('is-pointer-active');
+          activeElement.style.removeProperty('--interactive-light-gradient');
+          activeElement = null;
+        }
+        pendingPosition = null;
+        return;
+      }
 
       if (activeElement !== element) {
         activeElement?.classList.remove('is-pointer-active');
@@ -78,24 +98,54 @@ export const useInteractiveLighting = () => {
       const rect = element.getBoundingClientRect();
       setPosition(element, rect.left + rect.width / 2, rect.top + rect.height / 2);
       element.classList.add('is-keyboard-focus');
+      keyboardFocusElement = element;
     };
 
     const deactivate = (element = activeElement) => {
       if (!element) return;
       element.classList.remove('is-pointer-active');
-      if (element === activeElement) activeElement = null;
+      if (!element.classList.contains('is-keyboard-focus')) {
+        element.style.removeProperty('--interactive-light-gradient');
+      }
+      if (element === activeElement) {
+        activeElement = null;
+        pendingPosition = null;
+      }
+    };
+
+    const clearKeyboardFocus = () => {
+      if (!keyboardFocusElement) return;
+      keyboardFocusElement.classList.remove('is-keyboard-focus');
+      if (keyboardFocusElement !== activeElement) {
+        keyboardFocusElement.style.removeProperty('--interactive-light-gradient');
+      }
+      keyboardFocusElement = null;
+    };
+
+    const switchToPointerInput = () => {
+      keyboardNavigation = false;
+      clearKeyboardFocus();
     };
 
     const handlePointerMove = (event) => {
-      activate(getInteractiveTarget(event.target), event.clientX, event.clientY);
+      switchToPointerInput();
+      const element = getInteractiveTarget(event.target);
+      if (element) activate(element, event.clientX, event.clientY);
+      else deactivate();
     };
 
     const handlePointerOver = (event) => {
-      activate(getInteractiveTarget(event.target), event.clientX, event.clientY);
+      switchToPointerInput();
+      const element = getInteractiveTarget(event.target);
+      if (element) activate(element, event.clientX, event.clientY);
+      else deactivate();
     };
 
     const handlePointerDown = (event) => {
-      activate(getInteractiveTarget(event.target), event.clientX, event.clientY);
+      switchToPointerInput();
+      const element = getInteractiveTarget(event.target);
+      if (element) activate(element, event.clientX, event.clientY);
+      else deactivate();
     };
 
     const handlePointerOut = (event) => {
@@ -112,12 +162,29 @@ export const useInteractiveLighting = () => {
 
     const handleFocusIn = (event) => {
       const element = getInteractiveTarget(event.target);
-      if (element) centerKeyboardLight(element);
+      if (element && keyboardNavigation) centerKeyboardLight(element);
     };
 
     const handleFocusOut = (event) => {
       const element = getInteractiveTarget(event.target);
       element?.classList.remove('is-keyboard-focus');
+      if (element === keyboardFocusElement) keyboardFocusElement = null;
+      if (element && element !== activeElement) {
+        element.style.removeProperty('--interactive-light-gradient');
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Tab') keyboardNavigation = true;
+    };
+
+    const handleWindowBlur = () => {
+      deactivate();
+      clearKeyboardFocus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) handleWindowBlur();
     };
 
     document.addEventListener('pointerover', handlePointerOver, { passive: true });
@@ -128,6 +195,9 @@ export const useInteractiveLighting = () => {
     document.addEventListener('pointercancel', handlePointerEnd, { passive: true });
     document.addEventListener('focusin', handleFocusIn);
     document.addEventListener('focusout', handleFocusOut);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       if (animationFrame !== null) cancelAnimationFrame(animationFrame);
@@ -139,6 +209,9 @@ export const useInteractiveLighting = () => {
       document.removeEventListener('pointercancel', handlePointerEnd);
       document.removeEventListener('focusin', handleFocusIn);
       document.removeEventListener('focusout', handleFocusOut);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, []);
 };

@@ -54,8 +54,8 @@ button:not([data-interactive="off"])::after,
   opacity: var(--interactive-opacity);
   background: var(--interactive-light-gradient);
   box-shadow:
-    inset 0 0 0 1px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.38)),
-    0 0 18px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.1));
+    inset 0 0 0 1px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.18)),
+    0 0 16px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.04));
   transition: opacity 180ms ease, box-shadow 180ms ease;
 }
 
@@ -80,10 +80,10 @@ textarea.is-pointer-active,
 textarea.is-keyboard-focus,
 select.is-pointer-active,
 select.is-keyboard-focus {
-  border-color: rgb(var(--interactive-rgb) / 0.55);
+  border-color: rgb(var(--interactive-rgb) / 0.4);
   box-shadow:
-    0 0 0 1px rgb(var(--interactive-rgb) / 0.2),
-    0 0 24px rgb(var(--interactive-rgb) / 0.18);
+    0 0 0 1px rgb(var(--interactive-rgb) / 0.1),
+    0 0 22px rgb(var(--interactive-rgb) / 0.08);
 }
 
 button:disabled::after,
