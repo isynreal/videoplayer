@@ -129,6 +129,10 @@ const GlassButton = ({
 };
 
 // 🍏 蘋果風：毛玻璃卡片
+const InteractiveLightLayer = () => (
+  <span aria-hidden="true" className="interactive-light-layer" />
+);
+
 const GlassCard = ({
   children,
   onClick,
@@ -144,6 +148,7 @@ const GlassCard = ({
       data-interactive
       data-glow={glow}
       data-interactive-size={interactiveSize}
+      data-interactive-layered
       whileHover={{ y: -5, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       className={`
@@ -154,6 +159,7 @@ const GlassCard = ({
         ${className}
       `}
     >
+      <InteractiveLightLayer />
       {children}
     </Motion.div>
   );
@@ -710,7 +716,8 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-bold text-gray-300 mb-2">封面縮圖</label>
-                <label data-interactive data-glow="primary" data-interactive-size="card" className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/10 border-dashed rounded-2xl cursor-pointer bg-black/30 hover:bg-white/5 transition-all relative overflow-hidden group shadow-inner">
+                <label data-interactive data-glow="primary" data-interactive-size="card" data-interactive-layered className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/10 border-dashed rounded-2xl cursor-pointer bg-black/30 hover:bg-white/5 transition-all relative overflow-hidden group shadow-inner">
+                  <InteractiveLightLayer />
                   {thumbUrl ? (
                       <>
                         <img src={thumbUrl} className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-40 transition-opacity duration-300" />
@@ -868,8 +875,9 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                </h3>
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {displayedVideos.map(v => (
-                    <Motion.div data-interactive data-glow="purple" data-interactive-size="card" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
+                    <Motion.div data-interactive data-glow="purple" data-interactive-size="card" data-interactive-layered whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
                       className={`cursor-pointer p-4 rounded-2xl border flex items-center gap-4 transition-all ${selectedVideoIds.includes(v.id) ? 'border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 hover:border-white/20 bg-white/5'}`}>
+                      <InteractiveLightLayer />
                       <div className={`w-6 h-6 rounded-md border flex-shrink-0 flex items-center justify-center transition-all ${selectedVideoIds.includes(v.id) ? 'bg-purple-500 border-purple-400 shadow-lg' : 'border-gray-500 bg-black/50'}`}>
                         {selectedVideoIds.includes(v.id) && <Check className="w-4 h-4 text-white" />}
                       </div>

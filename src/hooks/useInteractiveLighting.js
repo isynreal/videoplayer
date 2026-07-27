@@ -22,7 +22,7 @@ const GLOW_COLORS = {
 
 const GLOW_SIZES = {
   control: { radius: 140, centerAlpha: 0.34, middleAlpha: 0.1 },
-  card: { radius: 290, centerAlpha: 0.2, middleAlpha: 0.055 },
+  card: { radius: 210, centerAlpha: 0.18, middleAlpha: 0.05 },
   panel: { radius: 370, centerAlpha: 0.12, middleAlpha: 0.035 },
 };
 
