@@ -15,8 +15,6 @@ import {
 import { motion as Motion } from 'framer-motion';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 
-const APP_VERSION = "2.0.1"; // 🌟 更新：修復 Windows 醜陋捲軸，替換為 Mac 級玻璃質感捲軸
-
 // --- 設定區域 ---
 const firebaseConfig = {
   apiKey: "AIzaSyAYhJ0BeSwR0i-x9HHAVXR2p_1dD0l-an4",

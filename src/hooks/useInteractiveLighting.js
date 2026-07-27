@@ -26,8 +26,7 @@ export const useInteractiveLighting = () => {
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
 
-      element.style.setProperty('--pointer-x', `${x}px`);
-      element.style.setProperty('--pointer-y', `${y}px`);
+      element.style.setProperty('--pointer-position', `${x}px ${y}px`);
     };
 
     const flushPosition = () => {
@@ -53,8 +52,7 @@ export const useInteractiveLighting = () => {
 
     const centerKeyboardLight = (element) => {
       const rect = element.getBoundingClientRect();
-      element.style.setProperty('--pointer-x', `${rect.width / 2}px`);
-      element.style.setProperty('--pointer-y', `${rect.height / 2}px`);
+      element.style.setProperty('--pointer-position', `${rect.width / 2}px ${rect.height / 2}px`);
       element.classList.add('is-keyboard-focus');
     };
 

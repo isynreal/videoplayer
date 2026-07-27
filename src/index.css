@@ -17,8 +17,7 @@ textarea:not([data-interactive="off"]),
 select:not([data-interactive="off"]) {
   --interactive-rgb: var(--interactive-blue);
   --interactive-opacity: 0;
-  --pointer-x: 50%;
-  --pointer-y: 50%;
+  --pointer-position: 50% 50%;
 }
 
 [data-glow="purple"] {
@@ -55,30 +54,32 @@ button:not([data-interactive="off"])::after,
   opacity: var(--interactive-opacity);
   background:
     radial-gradient(
-      circle 110px at var(--pointer-x) var(--pointer-y),
-      rgb(var(--interactive-rgb) / 0.34),
-      rgb(var(--interactive-rgb) / 0.12) 35%,
-      transparent 72%
+      circle 130px at var(--pointer-position),
+      rgb(var(--interactive-rgb) / 0.55),
+      rgb(var(--interactive-rgb) / 0.2) 38%,
+      transparent 74%
     );
-  box-shadow: inset 0 0 0 1px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.18));
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.38)),
+    0 0 18px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.1));
   transition: opacity 180ms ease, box-shadow 180ms ease;
 }
 
 [data-interactive-size="card"]::after {
   background:
     radial-gradient(
-      circle 240px at var(--pointer-x) var(--pointer-y),
-      rgb(var(--interactive-rgb) / 0.2),
-      rgb(var(--interactive-rgb) / 0.06) 42%,
-      transparent 72%
+      circle 280px at var(--pointer-position),
+      rgb(var(--interactive-rgb) / 0.34),
+      rgb(var(--interactive-rgb) / 0.1) 42%,
+      transparent 74%
     );
 }
 
 [data-interactive-size="panel"]::after {
   background:
     radial-gradient(
-      circle 320px at var(--pointer-x) var(--pointer-y),
-      rgb(var(--interactive-rgb) / 0.12),
+      circle 360px at var(--pointer-position),
+      rgb(var(--interactive-rgb) / 0.2),
       transparent 70%
     );
 }
@@ -93,8 +94,8 @@ textarea:not([data-interactive="off"]),
 select:not([data-interactive="off"]) {
   background-image:
     radial-gradient(
-      circle 160px at var(--pointer-x) var(--pointer-y),
-      rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.16)),
+      circle 180px at var(--pointer-position),
+      rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.24)),
       transparent 72%
     );
   transition:
@@ -111,8 +112,8 @@ select.is-pointer-active,
 select.is-keyboard-focus {
   border-color: rgb(var(--interactive-rgb) / 0.55);
   box-shadow:
-    0 0 0 1px rgb(var(--interactive-rgb) / 0.12),
-    0 0 22px rgb(var(--interactive-rgb) / 0.12);
+    0 0 0 1px rgb(var(--interactive-rgb) / 0.2),
+    0 0 24px rgb(var(--interactive-rgb) / 0.18);
 }
 
 button:disabled::after,
