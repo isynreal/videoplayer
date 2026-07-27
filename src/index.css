@@ -1,3 +1,138 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --interactive-blue: 96 165 250;
+  --interactive-purple: 192 132 252;
+  --interactive-green: 74 222 128;
+  --interactive-red: 248 113 113;
+  --interactive-white: 255 255 255;
+}
+
+button:not([data-interactive="off"]),
+[data-interactive]:not([data-interactive="off"]),
+input:not([type="file"]):not([type="hidden"]):not([data-interactive="off"]),
+textarea:not([data-interactive="off"]),
+select:not([data-interactive="off"]) {
+  --interactive-rgb: var(--interactive-blue);
+  --interactive-opacity: 0;
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+}
+
+[data-glow="purple"] {
+  --interactive-rgb: var(--interactive-purple);
+}
+
+[data-glow="success"] {
+  --interactive-rgb: var(--interactive-green);
+}
+
+[data-glow="danger"] {
+  --interactive-rgb: var(--interactive-red);
+}
+
+[data-glow="neutral"],
+[data-glow="subtle"] {
+  --interactive-rgb: var(--interactive-white);
+}
+
+button:not([data-interactive="off"]),
+[data-interactive]:not([data-interactive="off"]) {
+  position: relative;
+  isolation: isolate;
+}
+
+button:not([data-interactive="off"])::after,
+[data-interactive]:not([data-interactive="off"])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--interactive-opacity);
+  background:
+    radial-gradient(
+      circle 110px at var(--pointer-x) var(--pointer-y),
+      rgb(var(--interactive-rgb) / 0.34),
+      rgb(var(--interactive-rgb) / 0.12) 35%,
+      transparent 72%
+    );
+  box-shadow: inset 0 0 0 1px rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.18));
+  transition: opacity 180ms ease, box-shadow 180ms ease;
+}
+
+[data-interactive-size="card"]::after {
+  background:
+    radial-gradient(
+      circle 240px at var(--pointer-x) var(--pointer-y),
+      rgb(var(--interactive-rgb) / 0.2),
+      rgb(var(--interactive-rgb) / 0.06) 42%,
+      transparent 72%
+    );
+}
+
+[data-interactive-size="panel"]::after {
+  background:
+    radial-gradient(
+      circle 320px at var(--pointer-x) var(--pointer-y),
+      rgb(var(--interactive-rgb) / 0.12),
+      transparent 70%
+    );
+}
+
+.is-pointer-active,
+.is-keyboard-focus {
+  --interactive-opacity: 1;
+}
+
+input:not([type="file"]):not([type="hidden"]):not([data-interactive="off"]),
+textarea:not([data-interactive="off"]),
+select:not([data-interactive="off"]) {
+  background-image:
+    radial-gradient(
+      circle 160px at var(--pointer-x) var(--pointer-y),
+      rgb(var(--interactive-rgb) / calc(var(--interactive-opacity) * 0.16)),
+      transparent 72%
+    );
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+input.is-pointer-active,
+input.is-keyboard-focus,
+textarea.is-pointer-active,
+textarea.is-keyboard-focus,
+select.is-pointer-active,
+select.is-keyboard-focus {
+  border-color: rgb(var(--interactive-rgb) / 0.55);
+  box-shadow:
+    0 0 0 1px rgb(var(--interactive-rgb) / 0.12),
+    0 0 22px rgb(var(--interactive-rgb) / 0.12);
+}
+
+button:disabled::after,
+[aria-disabled="true"]::after {
+  opacity: 0;
+}
+
+@media (pointer: coarse) {
+  button:not([data-interactive="off"])::after,
+  [data-interactive]:not([data-interactive="off"])::after {
+    transition-duration: 240ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not([data-interactive="off"])::after,
+  [data-interactive]:not([data-interactive="off"])::after,
+  input:not([type="file"]):not([type="hidden"]),
+  textarea,
+  select {
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -13,6 +13,7 @@ import {
   ArrowUpDown, LockKeyhole, UserRound, LogOut
 } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
+import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 
 const APP_VERSION = "2.0.1"; // 🌟 更新：修復 Windows 醜陋捲軸，替換為 Mac 級玻璃質感捲軸
 
@@ -94,13 +95,25 @@ const formatDate = (dateString) => {
 };
 
 // 🍏 蘋果風：Q彈毛玻璃按鈕
-const GlassButton = ({ children, onClick, className = "", disabled = false, type = "button", ...buttonProps }) => {
+const GlassButton = ({
+  children,
+  onClick,
+  className = "",
+  disabled = false,
+  type = "button",
+  glow = "neutral",
+  interactiveSize = "control",
+  ...buttonProps
+}) => {
   return (
     <Motion.button
       type={type}
       disabled={disabled}
       onClick={onClick}
       {...buttonProps}
+      data-interactive
+      data-glow={glow}
+      data-interactive-size={interactiveSize}
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.92, transition: { type: "spring", stiffness: 400, damping: 10 } }}
       className={`
@@ -118,10 +131,21 @@ const GlassButton = ({ children, onClick, className = "", disabled = false, type
 };
 
 // 🍏 蘋果風：毛玻璃卡片
-const GlassCard = ({ children, onClick, className = "" }) => {
+const GlassCard = ({
+  children,
+  onClick,
+  className = "",
+  glow = "primary",
+  interactiveSize = "card",
+  ...cardProps
+}) => {
   return (
     <Motion.div
       onClick={onClick}
+      {...cardProps}
+      data-interactive
+      data-glow={glow}
+      data-interactive-size={interactiveSize}
       whileHover={{ y: -5, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       className={`
@@ -191,7 +215,7 @@ const AdminLogin = ({ onLogin }) => {
           <div>
             <label htmlFor="admin-username" className="block text-sm font-bold text-gray-300 mb-2">帳號</label>
             <div className="relative">
-              <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
               <input
                 id="admin-username"
                 type="text"
@@ -209,7 +233,7 @@ const AdminLogin = ({ onLogin }) => {
           <div>
             <label htmlFor="admin-password" className="block text-sm font-bold text-gray-300 mb-2">密碼</label>
             <div className="relative">
-              <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
               <input
                 id="admin-password"
                 type="password"
@@ -232,6 +256,7 @@ const AdminLogin = ({ onLogin }) => {
           <GlassButton
             type="submit"
             disabled={isSubmitting || !username || !password}
+            glow="primary"
             className="w-full !bg-blue-600 !border-blue-400 hover:!bg-blue-500 rounded-xl py-3.5 flex items-center justify-center gap-2 font-bold shadow-[0_0_24px_rgba(37,99,235,0.3)]"
           >
             <LockKeyhole className="w-4 h-4" />
@@ -248,6 +273,8 @@ const AdminLogin = ({ onLogin }) => {
 
 // --- Main App Component ---
 export default function App() {
+  useInteractiveLighting();
+
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [videos, setVideos] = useState([]);
@@ -426,7 +453,7 @@ export default function App() {
       <nav className="bg-black/30 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-30 shadow-2xl relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            <div className="flex items-center cursor-pointer flex-shrink-0 mr-4" onClick={() => {
+            <div data-interactive data-glow="subtle" className="flex items-center cursor-pointer flex-shrink-0 mr-4 rounded-2xl" onClick={() => {
                 if (!isSharedMode) { setActiveTab('home'); setSharedPlaylistId(null); setSearchQuery(''); setSelectedTag(null); window.location.hash = ''; }
               }}>
               <img src="/logo.png" alt="iSynReal Logo" className="h-10 md:h-12 object-contain drop-shadow-lg transition-transform hover:scale-105" />
@@ -448,12 +475,12 @@ export default function App() {
 
             {!isSharedMode && (
               <div className="flex items-center gap-3 overflow-x-auto mac-scrollbar py-2 md:overflow-visible">
-                <button onClick={() => setActiveTab('home')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'home' ? 'bg-white text-black shadow-lg' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>影片庫</button>
-                <button onClick={() => setActiveTab('playlists')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'playlists' ? 'bg-white text-black shadow-lg' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>播放清單</button>
-                <GlassButton onClick={() => { setVideoToEdit(null); setShowUploadModal(true); }} className="px-5 py-2 rounded-full text-sm flex items-center gap-2 ml-2">
+                <button data-glow="neutral" onClick={() => setActiveTab('home')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'home' ? 'bg-white text-black shadow-lg' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>影片庫</button>
+                <button data-glow="neutral" onClick={() => setActiveTab('playlists')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'playlists' ? 'bg-white text-black shadow-lg' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>播放清單</button>
+                <GlassButton glow="success" onClick={() => { setVideoToEdit(null); setShowUploadModal(true); }} className="px-5 py-2 rounded-full text-sm flex items-center gap-2 ml-2">
                   <Plus className="w-4 h-4" /><span className="hidden sm:inline">新增影片</span>
                 </GlassButton>
-                <GlassButton onClick={() => signOut(auth)} className="p-2.5 rounded-full" aria-label="登出管理後台">
+                <GlassButton glow="subtle" onClick={() => signOut(auth)} className="p-2.5 rounded-full" aria-label="登出管理後台">
                   <LogOut className="w-4 h-4" />
                 </GlassButton>
               </div>
@@ -486,11 +513,11 @@ export default function App() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 {/* 🌟 修改：替換捲軸樣式為 mac-scrollbar，並增加 pb-3 確保不擁擠 */}
                 <div className="flex gap-2 overflow-x-auto mac-scrollbar pb-3 flex-1 w-full">
-                  <Motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedTag(null)} className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0 ${!selectedTag ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/5 backdrop-blur-md border border-white/10 text-gray-300 hover:bg-white/10'}`}>全部顯示</Motion.button>
+                  <Motion.button data-glow="neutral" whileTap={{ scale: 0.9 }} onClick={() => setSelectedTag(null)} className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0 ${!selectedTag ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/5 backdrop-blur-md border border-white/10 text-gray-300 hover:bg-white/10'}`}>全部顯示</Motion.button>
                   {allTags.map(tag => (
                     <div key={tag} className={`flex items-center pl-4 pr-1 py-1 rounded-full text-sm whitespace-nowrap transition-all border shrink-0 ${tag === selectedTag ? 'bg-blue-500 text-white border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white/5 backdrop-blur-md text-gray-300 border-white/10 hover:bg-white/10'}`}>
-                        <span className="cursor-pointer mr-2 font-medium py-1" onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}>#{tag}</span>
-                        <Motion.button whileHover={{ scale: 1.2, backgroundColor: "rgba(239, 68, 68, 0.2)" }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteGlobalTag(tag)} className="text-gray-400 hover:text-red-400 p-1.5 rounded-full transition-colors" title="徹底刪除此標籤">
+                        <span data-interactive data-glow="primary" className="cursor-pointer mr-2 font-medium py-1 rounded-full" onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}>#{tag}</span>
+                        <Motion.button data-glow="danger" whileHover={{ scale: 1.2, backgroundColor: "rgba(239, 68, 68, 0.2)" }} whileTap={{ scale: 0.9 }} onClick={() => handleDeleteGlobalTag(tag)} className="text-gray-400 hover:text-red-400 p-1.5 rounded-full transition-colors" title="徹底刪除此標籤">
                             <X className="w-3.5 h-3.5" />
                         </Motion.button>
                     </div>
@@ -500,6 +527,7 @@ export default function App() {
                 <div className="flex items-center gap-2 shrink-0 bg-white/5 backdrop-blur-md p-1.5 rounded-full border border-white/10 shadow-lg">
                   <ArrowUpDown className="w-4 h-4 text-gray-400 ml-3" />
                   <select
+                    data-glow="primary"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     className="bg-transparent text-sm font-medium text-white cursor-pointer focus:outline-none pr-4 py-1.5 appearance-none"
@@ -538,11 +566,11 @@ export default function App() {
 // --- Video Card Component ---
 const VideoCard = ({ video, onClick, isAdmin, onDelete, onEdit }) => {
   return (
-    <GlassCard onClick={onClick} className="flex flex-col h-full relative group">
+    <GlassCard glow="primary" onClick={onClick} className="flex flex-col h-full relative group">
       {isAdmin && (
         <div className="absolute top-3 left-3 z-20 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300">
-          <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => onEdit(e, video)} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-blue-500 text-white p-2.5 rounded-full shadow-lg"><Pencil className="w-4 h-4" /></Motion.button>
-          <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { if(confirm('確定刪除這部影片？')) onDelete(e, video.id); }} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-red-500 text-white p-2.5 rounded-full shadow-lg"><Trash2 className="w-4 h-4" /></Motion.button>
+          <Motion.button data-glow="primary" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => onEdit(e, video)} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-blue-500 text-white p-2.5 rounded-full shadow-lg"><Pencil className="w-4 h-4" /></Motion.button>
+          <Motion.button data-glow="danger" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { if(confirm('確定刪除這部影片？')) onDelete(e, video.id); }} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-red-500 text-white p-2.5 rounded-full shadow-lg"><Trash2 className="w-4 h-4" /></Motion.button>
         </div>
       )}
       <div className="relative aspect-video bg-black/50 overflow-hidden border-b border-white/10">
@@ -580,7 +608,7 @@ const PlayerModal = ({ video, onClose }) => {
       >
         <div className="flex justify-between items-center p-4 md:p-5 border-b border-white/10 shrink-0 bg-white/5">
           <h2 className="text-lg font-bold text-white truncate pr-4">{video.title}</h2>
-          <Motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/10 p-2 rounded-full border border-white/10"><X className="w-5 h-5" /></Motion.button>
+          <Motion.button data-glow="neutral" whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/10 p-2 rounded-full border border-white/10"><X className="w-5 h-5" /></Motion.button>
         </div>
         <div className="relative bg-black w-full aspect-video flex items-center justify-center shadow-inner">
           {embedInfo?.type === 'native' ? (
@@ -661,7 +689,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
             {videoToEdit ? <div className="bg-blue-500/20 p-2 rounded-xl"><Pencil className="w-6 h-6 text-blue-400" /></div> : <div className="bg-green-500/20 p-2 rounded-xl"><Plus className="w-6 h-6 text-green-400" /></div>} 
             {videoToEdit ? '編輯影片內容' : '新增影片至資料庫'}
           </h2>
-          <Motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/5 border border-white/10 rounded-full p-2"><X className="w-6 h-6" /></Motion.button>
+          <Motion.button data-glow="neutral" whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={onClose} className="text-gray-400 hover:text-white bg-white/5 border border-white/10 rounded-full p-2"><X className="w-6 h-6" /></Motion.button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -684,7 +712,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-bold text-gray-300 mb-2">封面縮圖</label>
-                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/10 border-dashed rounded-2xl cursor-pointer bg-black/30 hover:bg-white/5 transition-all relative overflow-hidden group shadow-inner">
+                <label data-interactive data-glow="primary" data-interactive-size="card" className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/10 border-dashed rounded-2xl cursor-pointer bg-black/30 hover:bg-white/5 transition-all relative overflow-hidden group shadow-inner">
                   {thumbUrl ? (
                       <>
                         <img src={thumbUrl} className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-40 transition-opacity duration-300" />
@@ -703,7 +731,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
                 <div className="flex flex-wrap gap-2 mb-4 min-h-[40px] bg-black/20 p-3 rounded-xl border border-white/5">
                   {tags.map(tag => (
                       <Motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} key={tag} className="bg-blue-600 border border-blue-400 text-white text-sm font-medium px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
-                          #{tag} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-300 bg-black/20 rounded-full p-0.5"><X className="w-3.5 h-3.5" /></button>
+                          #{tag} <button data-glow="danger" type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-300 bg-black/20 rounded-full p-0.5"><X className="w-3.5 h-3.5" /></button>
                       </Motion.span>
                   ))}
                   {tags.length === 0 && <span className="text-gray-500 text-sm flex items-center">尚未加入任何標籤</span>}
@@ -714,7 +742,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
                     <p className="text-gray-400 text-xs font-bold mb-3 uppercase tracking-wider">點擊快速加入現有標籤</p>
                     <div className="flex flex-wrap gap-2">
                       {availableTags.map(tag => (
-                        <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} key={tag} type="button" onClick={() => setTags([...tags, tag])} className="bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-full text-sm font-medium transition-colors">
+                        <Motion.button data-glow="primary" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} key={tag} type="button" onClick={() => setTags([...tags, tag])} className="bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-full text-sm font-medium transition-colors">
                           + {tag}
                         </Motion.button>
                       ))}
@@ -726,7 +754,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
           </div>
           <div className="flex justify-end pt-8 mt-6 border-t border-white/10 gap-4">
             <GlassButton onClick={onClose} className="px-6 py-3 rounded-xl text-gray-300 font-bold">取消編輯</GlassButton>
-            <GlassButton type="submit" disabled={loading} className="!bg-blue-600 !border-blue-400 hover:!bg-blue-500 px-8 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)]">
+            <GlassButton glow="primary" type="submit" disabled={loading} className="!bg-blue-600 !border-blue-400 hover:!bg-blue-500 px-8 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)]">
                 {loading ? '處理中...' : '儲存變更'}
             </GlassButton>
           </div>
@@ -771,19 +799,19 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
       <div className="flex justify-between items-center mb-8 bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-40 h-40 bg-purple-500/20 rounded-full blur-[50px]"></div>
         <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 relative z-10">播放清單管理</h2>
-        <GlassButton onClick={openCreateModal} className="!bg-green-600/80 hover:!bg-green-500 !border-green-400 px-6 py-3 rounded-full flex items-center gap-2 font-bold shadow-[0_0_20px_rgba(34,197,94,0.3)] relative z-10">
+        <GlassButton glow="success" onClick={openCreateModal} className="!bg-green-600/80 hover:!bg-green-500 !border-green-400 px-6 py-3 rounded-full flex items-center gap-2 font-bold shadow-[0_0_20px_rgba(34,197,94,0.3)] relative z-10">
           <Plus className="w-5 h-5" /> 建立新清單
         </GlassButton>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {playlists.map(pl => (
-          <GlassCard key={pl.id} className="p-6 flex flex-col relative group">
+          <GlassCard key={pl.id} glow="purple" className="p-6 flex flex-col relative group">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-bold truncate pr-2 text-white/90 group-hover:text-white transition-colors">{pl.title}</h3>
               <div className="flex gap-2 shrink-0 bg-black/40 backdrop-blur-md rounded-xl p-1.5 border border-white/5">
-                 <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(pl)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></Motion.button>
-                 <Motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { if(confirm('確定刪除這個清單嗎？')) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'playlists', pl.id)); }} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></Motion.button>
+                 <Motion.button data-glow="purple" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(pl)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></Motion.button>
+                 <Motion.button data-glow="danger" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => { if(confirm('確定刪除這個清單嗎？')) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'playlists', pl.id)); }} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></Motion.button>
               </div>
             </div>
             <p className="text-gray-400 text-sm mb-6 line-clamp-2 min-h-[2.5rem] leading-relaxed">{pl.description || "無說明內容"}</p>
@@ -794,7 +822,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
             </div>
 
             <div className="mt-auto">
-              <GlassButton onClick={() => copyLink(pl.id)} className={`w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2 font-bold transition-all ${justCopied === pl.id ? '!bg-green-600 !border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : ''}`}>
+              <GlassButton glow={justCopied === pl.id ? 'success' : 'purple'} onClick={() => copyLink(pl.id)} className={`w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2 font-bold transition-all ${justCopied === pl.id ? '!bg-green-600 !border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : ''}`}>
                 {justCopied === pl.id ? <Check className="w-5 h-5"/> : <Share2 className="w-5 h-5"/>} 
                 {justCopied === pl.id ? '已複製分享連結！' : '複製專屬分享連結'}
               </GlassButton>
@@ -815,11 +843,11 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 shrink-0">
                 <div>
                     <label className="block text-sm font-bold text-gray-300 mb-2">清單名稱 *</label>
-                    <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:bg-white/5 transition-all shadow-inner" placeholder="例如：新進員工教育訓練" />
+                    <input data-glow="purple" type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:bg-white/5 transition-all shadow-inner" placeholder="例如：新進員工教育訓練" />
                 </div>
                 <div>
                     <label className="block text-sm font-bold text-gray-300 mb-2">清單說明 (選填)</label>
-                    <input type="text" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:bg-white/5 transition-all shadow-inner" placeholder="簡單描述此清單的內容..." />
+                    <input data-glow="purple" type="text" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:bg-white/5 transition-all shadow-inner" placeholder="簡單描述此清單的內容..." />
                 </div>
             </div>
 
@@ -827,9 +855,9 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                 <div className="mb-6 shrink-0 overflow-x-auto mac-scrollbar bg-white/5 p-4 rounded-2xl border border-white/10 shadow-inner">
                     <div className="flex gap-3 items-center">
                         <span className="text-sm font-bold text-gray-400 flex items-center gap-2 mr-2 uppercase tracking-wider"><Filter className="w-4 h-4"/> 影片過濾</span>
-                        <Motion.button whileTap={{ scale: 0.9 }} onClick={() => setFilterTag(null)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!filterTag ? 'bg-white text-black shadow-lg' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>全部顯示</Motion.button>
+                        <Motion.button data-glow="neutral" whileTap={{ scale: 0.9 }} onClick={() => setFilterTag(null)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!filterTag ? 'bg-white text-black shadow-lg' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>全部顯示</Motion.button>
                         {allTags.map(tag => (
-                            <Motion.button whileTap={{ scale: 0.9 }} key={tag} onClick={() => setFilterTag(tag === filterTag ? null : tag)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${tag === filterTag ? 'bg-purple-600 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>#{tag}</Motion.button>
+                            <Motion.button data-glow="purple" whileTap={{ scale: 0.9 }} key={tag} onClick={() => setFilterTag(tag === filterTag ? null : tag)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${tag === filterTag ? 'bg-purple-600 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-black/30 text-gray-300 border border-white/5 hover:bg-white/10'}`}>#{tag}</Motion.button>
                         ))}
                     </div>
                 </div>
@@ -842,7 +870,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                </h3>
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {displayedVideos.map(v => (
-                    <Motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
+                    <Motion.div data-interactive data-glow="purple" data-interactive-size="card" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
                       className={`cursor-pointer p-4 rounded-2xl border flex items-center gap-4 transition-all ${selectedVideoIds.includes(v.id) ? 'border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 hover:border-white/20 bg-white/5'}`}>
                       <div className={`w-6 h-6 rounded-md border flex-shrink-0 flex items-center justify-center transition-all ${selectedVideoIds.includes(v.id) ? 'bg-purple-500 border-purple-400 shadow-lg' : 'border-gray-500 bg-black/50'}`}>
                         {selectedVideoIds.includes(v.id) && <Check className="w-4 h-4 text-white" />}
@@ -859,7 +887,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
 
             <div className="flex justify-end gap-4 shrink-0 pt-6 border-t border-white/10">
               <GlassButton onClick={closeEditModal} className="px-6 py-3 rounded-xl text-gray-300 font-bold">取消</GlassButton>
-              <GlassButton onClick={handleSavePlaylist} disabled={!newTitle || selectedVideoIds.length === 0} className="!bg-purple-600 !border-purple-400 hover:!bg-purple-500 px-8 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+              <GlassButton glow="purple" onClick={handleSavePlaylist} disabled={!newTitle || selectedVideoIds.length === 0} className="!bg-purple-600 !border-purple-400 hover:!bg-purple-500 px-8 py-3 rounded-xl font-bold shadow-[0_0_20px_rgba(168,85,247,0.4)]">
                  {editingPlaylistId ? '儲存變更' : '建立並儲存'}
               </GlassButton>
             </div>
