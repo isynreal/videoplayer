@@ -124,7 +124,7 @@ const GlassButton = ({
       `}
     >
       <LiquidGlassLayers />
-      {children}
+      <span className="liquid-glass-button-content">{children}</span>
     </Motion.button>
   );
 };
@@ -617,7 +617,7 @@ const VideoCard = ({ video, onClick, isAdmin, onDelete, onEdit }) => {
   return (
     <GlassCard glow="primary" onClick={onClick} className="flex flex-col h-full relative group">
       {isAdmin && (
-        <div className="absolute top-3 left-3 z-20 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300">
+        <div className="video-card-actions absolute top-3 left-3 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300">
           <Motion.button data-glow="primary" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => onEdit(e, video)} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-blue-500 text-white p-2.5 rounded-full shadow-lg"><Pencil className="w-4 h-4" /></Motion.button>
           <Motion.button data-glow="danger" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { if(confirm('確定刪除這部影片？')) onDelete(e, video.id); }} className="bg-black/60 backdrop-blur-md border border-white/20 hover:bg-red-500 text-white p-2.5 rounded-full shadow-lg"><Trash2 className="w-4 h-4" /></Motion.button>
         </div>

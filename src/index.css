@@ -98,6 +98,20 @@ button:not([data-interactive="off"]),
   z-index: 20;
 }
 
+.liquid-glass-button-content {
+  position: relative;
+  z-index: 20;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+}
+
+[data-interactive-layered] > .video-card-actions {
+  z-index: 40;
+}
+
 .liquid-glass-refraction-layer,
 .liquid-glass-specular-layer {
   position: absolute;
