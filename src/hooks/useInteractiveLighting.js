@@ -51,6 +51,8 @@ export const useInteractiveLighting = () => {
       const rect = element.getBoundingClientRect();
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
+      const xPercent = rect.width > 0 ? (x / rect.width) * 100 : 50;
+      const yPercent = rect.height > 0 ? (y / rect.height) * 100 : 50;
       const glowColor = GLOW_COLORS[element.dataset.glow] || GLOW_COLORS.primary;
       const inferredSize = rect.width >= 180 && rect.height >= 90 ? 'card' : 'control';
       const glowSize = GLOW_SIZES[element.dataset.interactiveSize || inferredSize] || GLOW_SIZES.control;
@@ -63,6 +65,18 @@ export const useInteractiveLighting = () => {
       ].join(', ');
 
       element.style.setProperty('--interactive-light-gradient', gradient);
+      element.style.setProperty('--glass-x', `${xPercent}%`);
+      element.style.setProperty('--glass-y', `${yPercent}%`);
+      element.style.setProperty('--glass-shift-x', `${(xPercent - 50) * 0.035}px`);
+      element.style.setProperty('--glass-shift-y', `${(yPercent - 50) * 0.035}px`);
+    };
+
+    const clearPosition = (element) => {
+      element.style.removeProperty('--interactive-light-gradient');
+      element.style.removeProperty('--glass-x');
+      element.style.removeProperty('--glass-y');
+      element.style.removeProperty('--glass-shift-x');
+      element.style.removeProperty('--glass-shift-y');
     };
 
     const flushPosition = () => {
@@ -75,7 +89,7 @@ export const useInteractiveLighting = () => {
       if (!element) {
         if (activeElement) {
           activeElement.classList.remove('is-pointer-active');
-          activeElement.style.removeProperty('--interactive-light-gradient');
+          clearPosition(activeElement);
           activeElement = null;
         }
         pendingPosition = null;
@@ -83,7 +97,12 @@ export const useInteractiveLighting = () => {
       }
 
       if (activeElement !== element) {
-        activeElement?.classList.remove('is-pointer-active');
+        if (activeElement) {
+          activeElement.classList.remove('is-pointer-active');
+          if (!activeElement.classList.contains('is-keyboard-focus')) {
+            clearPosition(activeElement);
+          }
+        }
         activeElement = element;
         activeElement.classList.add('is-pointer-active');
       }
@@ -105,7 +124,7 @@ export const useInteractiveLighting = () => {
       if (!element) return;
       element.classList.remove('is-pointer-active');
       if (!element.classList.contains('is-keyboard-focus')) {
-        element.style.removeProperty('--interactive-light-gradient');
+        clearPosition(element);
       }
       if (element === activeElement) {
         activeElement = null;
@@ -117,7 +136,7 @@ export const useInteractiveLighting = () => {
       if (!keyboardFocusElement) return;
       keyboardFocusElement.classList.remove('is-keyboard-focus');
       if (keyboardFocusElement !== activeElement) {
-        keyboardFocusElement.style.removeProperty('--interactive-light-gradient');
+        clearPosition(keyboardFocusElement);
       }
       keyboardFocusElement = null;
     };
@@ -170,7 +189,7 @@ export const useInteractiveLighting = () => {
       element?.classList.remove('is-keyboard-focus');
       if (element === keyboardFocusElement) keyboardFocusElement = null;
       if (element && element !== activeElement) {
-        element.style.removeProperty('--interactive-light-gradient');
+        clearPosition(element);
       }
     };
 

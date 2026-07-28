@@ -112,25 +112,61 @@ const GlassButton = ({
       data-interactive
       data-glow={glow}
       data-interactive-size={interactiveSize}
+      data-interactive-layered
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.92, transition: { type: "spring", stiffness: 400, damping: 10 } }}
       className={`
-        relative overflow-hidden
-        bg-white/10 backdrop-blur-md border border-white/20 shadow-lg
+        liquid-glass-material liquid-glass-control relative overflow-hidden
+        border border-white/20 shadow-lg
         text-white font-medium
-        before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/10 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity
         disabled:opacity-50 disabled:cursor-not-allowed
         ${className}
       `}
     >
+      <LiquidGlassLayers />
       {children}
     </Motion.button>
   );
 };
 
 // 🍏 蘋果風：毛玻璃卡片
-const InteractiveLightLayer = () => (
-  <span aria-hidden="true" className="interactive-light-layer" />
+const LiquidGlassFilter = () => (
+  <svg aria-hidden="true" className="liquid-glass-filter-defs">
+    <defs>
+      <filter
+        id="liquid-glass-refraction-filter"
+        x="-10%"
+        y="-10%"
+        width="120%"
+        height="120%"
+        colorInterpolationFilters="sRGB"
+      >
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.008 0.045"
+          numOctaves="1"
+          seed="7"
+          result="glassNoise"
+        />
+        <feGaussianBlur in="glassNoise" stdDeviation="1.2" result="softGlassNoise" />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="softGlassNoise"
+          scale="3.5"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </defs>
+  </svg>
+);
+
+const LiquidGlassLayers = () => (
+  <>
+    <span aria-hidden="true" className="liquid-glass-refraction-layer" />
+    <span aria-hidden="true" className="interactive-light-layer" />
+    <span aria-hidden="true" className="liquid-glass-specular-layer" />
+  </>
 );
 
 const GlassCard = ({
@@ -152,14 +188,14 @@ const GlassCard = ({
       whileHover={{ y: -5, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       className={`
-        bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl
+        liquid-glass-material liquid-glass-card border border-white/10 shadow-2xl
         rounded-2xl overflow-hidden cursor-pointer
-        hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.1)]
+        hover:border-white/20
         transition-colors duration-300
         ${className}
       `}
     >
-      <InteractiveLightLayer />
+      <LiquidGlassLayers />
       {children}
     </Motion.div>
   );
@@ -193,6 +229,7 @@ const AdminLogin = ({ onLogin }) => {
 
   return (
     <main className="min-h-screen bg-[#0f111a] text-gray-100 relative overflow-hidden flex items-center justify-center px-4 py-10">
+      <LiquidGlassFilter />
       <div className="absolute top-[-20%] left-[-10%] w-[520px] h-[520px] bg-blue-600/30 rounded-full blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-25%] right-[-10%] w-[560px] h-[560px] bg-purple-600/20 rounded-full blur-[160px] pointer-events-none" />
 
@@ -424,6 +461,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0f111a] text-gray-100 font-sans pb-10 relative overflow-hidden">
+      <LiquidGlassFilter />
       
       {/* 🌟 注入全域 CSS：美化醜陋的 Windows 捲軸 */}
       <style>{`
@@ -454,7 +492,14 @@ export default function App() {
       <div className="absolute top-[-10%] left-[0%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[160px] pointer-events-none"></div>
 
-      <nav className="bg-black/30 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-30 shadow-2xl relative">
+      <nav
+        data-interactive
+        data-glow="subtle"
+        data-interactive-size="panel"
+        data-interactive-layered
+        className="liquid-glass-material liquid-glass-navigation border-b border-white/10 sticky top-0 z-30 shadow-2xl relative"
+      >
+        <LiquidGlassLayers />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div data-interactive data-glow="subtle" className="flex items-center cursor-pointer flex-shrink-0 mr-4 rounded-2xl" onClick={() => {
@@ -717,7 +762,7 @@ const UploadModal = ({ onClose, appId, existingTags, videoToEdit, db }) => {
               <div>
                 <label className="block text-sm font-bold text-gray-300 mb-2">封面縮圖</label>
                 <label data-interactive data-glow="primary" data-interactive-size="card" data-interactive-layered className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/10 border-dashed rounded-2xl cursor-pointer bg-black/30 hover:bg-white/5 transition-all relative overflow-hidden group shadow-inner">
-                  <InteractiveLightLayer />
+                  <LiquidGlassLayers />
                   {thumbUrl ? (
                       <>
                         <img src={thumbUrl} className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-40 transition-opacity duration-300" />
@@ -877,7 +922,7 @@ const PlaylistManager = ({ videos, playlists, appId, allTags }) => {
                   {displayedVideos.map(v => (
                     <Motion.div data-interactive data-glow="purple" data-interactive-size="card" data-interactive-layered whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={v.id} onClick={() => setSelectedVideoIds(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id])}
                       className={`cursor-pointer p-4 rounded-2xl border flex items-center gap-4 transition-all ${selectedVideoIds.includes(v.id) ? 'border-purple-500 bg-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 hover:border-white/20 bg-white/5'}`}>
-                      <InteractiveLightLayer />
+                      <LiquidGlassLayers />
                       <div className={`w-6 h-6 rounded-md border flex-shrink-0 flex items-center justify-center transition-all ${selectedVideoIds.includes(v.id) ? 'bg-purple-500 border-purple-400 shadow-lg' : 'border-gray-500 bg-black/50'}`}>
                         {selectedVideoIds.includes(v.id) && <Check className="w-4 h-4 text-white" />}
                       </div>
