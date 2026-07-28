@@ -12,18 +12,18 @@ const INTERACTIVE_SELECTOR = [
 ].join(',');
 
 const GLOW_COLORS = {
-  primary: '96, 165, 250',
-  purple: '192, 132, 252',
-  success: '74, 222, 128',
-  danger: '248, 113, 113',
-  neutral: '125, 211, 252',
+  primary: '255, 255, 255',
+  purple: '250, 247, 255',
+  success: '247, 255, 251',
+  danger: '255, 248, 248',
+  neutral: '255, 255, 255',
   subtle: '255, 255, 255',
 };
 
 const GLOW_SIZES = {
-  control: { radius: 140, centerAlpha: 0.34, middleAlpha: 0.1 },
-  card: { radius: 210, centerAlpha: 0.18, middleAlpha: 0.05 },
-  panel: { radius: 370, centerAlpha: 0.12, middleAlpha: 0.035 },
+  control: { radius: 150, centerAlpha: 0.18, middleAlpha: 0.04 },
+  card: { radius: 230, centerAlpha: 0.105, middleAlpha: 0.024 },
+  panel: { radius: 380, centerAlpha: 0.06, middleAlpha: 0.014 },
 };
 
 const getInteractiveTarget = (target) => {
